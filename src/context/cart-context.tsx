@@ -20,12 +20,24 @@ function createCartStore() {
   let loadedFromStorage = false;
   const listeners = new Set<Listener>();
 
+  function isValidCartItem(item: CartItem): boolean {
+    return (
+      !!item.product &&
+      Array.isArray(item.product.images) &&
+      item.product.images.every((image) => image.src.startsWith("/"))
+    );
+  }
+
   function loadOnce() {
     if (loadedFromStorage || typeof window === "undefined") return;
     loadedFromStorage = true;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      items = raw ? (JSON.parse(raw) as CartItem[]) : [];
+      const parsed = raw ? (JSON.parse(raw) as CartItem[]) : [];
+      // Drop items left over from an earlier catalog (e.g. pointing at an
+      // image host that's no longer configured) instead of crashing.
+      items = parsed.filter(isValidCartItem);
+      if (items.length !== parsed.length) persist();
     } catch {
       items = [];
     }
