@@ -1,38 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { wishlistService } from "@/services/wishlist-service";
-import { ApiError } from "@/lib/api-client";
+import { useWishlist } from "@/context/wishlist-context";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { buttonClasses } from "@/components/ui/Button";
-import type { WishlistItem } from "@/types/wishlist";
 
 export default function FavoritosPage() {
   const { isAuthenticated } = useAuth();
-  const [items, setItems] = useState<WishlistItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let cancelled = false;
-    wishlistService
-      .getAll()
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof ApiError ? err.message : "No se pudieron cargar tus favoritos."
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
+  const { items } = useWishlist();
 
   if (!isAuthenticated) {
     return (
@@ -56,13 +32,7 @@ export default function FavoritosPage() {
         Mis favoritos
       </h1>
 
-      {error && <p className="mt-6 text-sm text-velvet">{error}</p>}
-
-      {!error && !items && (
-        <p className="mt-6 text-sm text-ink-muted">Cargando favoritos…</p>
-      )}
-
-      {items && items.length === 0 && (
+      {items.length === 0 && (
         <div className="mt-10 text-center">
           <p className="text-sm text-ink-muted">Todavía no guardaste ningún producto.</p>
           <Link href="/tienda" className={`${buttonClasses("solid")} mt-6`}>
@@ -71,7 +41,7 @@ export default function FavoritosPage() {
         </div>
       )}
 
-      {items && items.length > 0 && (
+      {items.length > 0 && (
         <div className="mt-10">
           <ProductGrid products={items.map((item) => item.product)} />
         </div>

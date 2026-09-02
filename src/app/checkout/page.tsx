@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import type { Appearance } from "@stripe/stripe-js";
@@ -18,6 +18,7 @@ import { orderService } from "@/services/order-service";
 import { productService } from "@/services/product-service";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { formatCurrency } from "@/lib/format-currency";
+import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
@@ -94,6 +95,30 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
+
+  // Prefills from the shipping address of the user's most recent order, but
+  // only while the form is still untouched — an address the shopper already
+  // started editing (even to a blank field) should never be clobbered by a
+  // fetch that resolves later.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    orderService
+      .getMyOrders()
+      .then((orders) => {
+        if (cancelled || orders.length === 0) return;
+        const mostRecent = [...orders].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        setAddress((prev) => (prev === EMPTY_ADDRESS ? mostRecent.shippingAddress : prev));
+      })
+      .catch(() => {
+        // Best-effort — the shopper just types the address manually if this fails.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   if (items.length === 0 && !order) {
     return (
@@ -188,7 +213,17 @@ export default function CheckoutPage() {
       <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
         <form onSubmit={handleCreateOrder} className="flex flex-col gap-8 lg:order-1">
           <section>
-            <SectionTitle step={1} label="Contacto" />
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <SectionTitle step={1} label="Contacto" />
+              {!isAuthenticated && (
+                <Link
+                  href="/cuenta/login"
+                  className="text-xs font-medium uppercase tracking-[0.16em] text-ink underline underline-offset-2 transition-colors hover:text-velvet"
+                >
+                  Iniciar sesión
+                </Link>
+              )}
+            </div>
             {!isAuthenticated && (
               <FormField
                 id="guestEmail"
@@ -262,58 +297,16 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          <section>
-            <SectionTitle step={3} label="Cupón" />
-            <label htmlFor="couponCode" className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
-              Código de cupón (opcional)
-            </label>
-            <div className="mt-1.5 flex gap-2">
+          {isAuthenticated && (
+            <label className="flex items-center gap-2 text-sm text-ink-muted">
               <input
-                id="couponCode"
-                value={couponCode}
-                onChange={(e) => {
-                  setCouponCode(e.target.value.toUpperCase());
-                  setCouponPreview(null);
-                }}
-                className="flex-1 border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+                type="checkbox"
+                checked={savePaymentMethod}
+                onChange={(e) => setSavePaymentMethod(e.target.checked)}
               />
-              <button
-                type="button"
-                onClick={handleValidateCoupon}
-                disabled={!couponCode.trim() || isValidatingCoupon}
-                className={buttonClasses("outline", "shrink-0 px-5 disabled:opacity-40")}
-              >
-                {isValidatingCoupon ? "Validando…" : "Validar"}
-              </button>
-            </div>
-
-            {couponPreview && couponPreview.valid && (
-              <p className="mt-2 text-sm text-ink">
-                Cupón aplicado
-                {couponPreview.discountAmount !== undefined && (
-                  <>
-                    : <span className="font-medium">-{formatCurrency(couponPreview.discountAmount)}</span>
-                  </>
-                )}
-              </p>
-            )}
-            {couponPreview && !couponPreview.valid && (
-              <p className="mt-2 text-sm text-velvet">
-                {COUPON_REASON_LABELS[couponPreview.reason]}
-              </p>
-            )}
-
-            {isAuthenticated && (
-              <label className="mt-4 flex items-center gap-2 text-sm text-ink-muted">
-                <input
-                  type="checkbox"
-                  checked={savePaymentMethod}
-                  onChange={(e) => setSavePaymentMethod(e.target.checked)}
-                />
-                Guardar esta tarjeta para futuras compras
-              </label>
-            )}
-          </section>
+              Guardar esta tarjeta para futuras compras
+            </label>
+          )}
 
           {error && <p className="text-sm text-velvet">{error}</p>}
 
@@ -331,6 +324,18 @@ export default function CheckoutPage() {
             meta: `Talla ${item.size} · Cant. ${item.quantity}`,
             amount: formatCurrency(item.product.price * item.quantity),
           }))}
+          couponSlot={
+            <CouponField
+              code={couponCode}
+              onCodeChange={(value) => {
+                setCouponCode(value);
+                setCouponPreview(null);
+              }}
+              onValidate={handleValidateCoupon}
+              isValidating={isValidatingCoupon}
+              preview={couponPreview}
+            />
+          }
           rows={[{ label: "Subtotal", value: formatCurrency(subtotal) }]}
           note="El total final (con descuentos o cupón aplicado) se calcula en el siguiente paso."
         />
@@ -355,11 +360,13 @@ function OrderSummary({
   rows,
   note,
   className = "",
+  couponSlot,
 }: {
   lines: { key: string; image: { src: string; alt: string }; name: string; meta: string; amount: string }[];
   rows: { label: string; value: string; strong?: boolean }[];
   note?: string;
   className?: string;
+  couponSlot?: React.ReactNode;
 }) {
   return (
     <div className={`border border-sand bg-cream-soft p-6 ${className}`}>
@@ -383,7 +390,9 @@ function OrderSummary({
         ))}
       </ul>
 
-      <div className="mt-2 flex flex-col gap-1.5 border-t border-sand pt-4 text-sm">
+      {couponSlot && <div className="mt-4">{couponSlot}</div>}
+
+      <div className="mt-4 flex flex-col gap-1.5 border-t border-sand pt-4 text-sm">
         {rows.map((row) => (
           <div
             key={row.label}
@@ -401,6 +410,59 @@ function OrderSummary({
         <LockIcon />
         Pago 100% seguro y encriptado
       </div>
+    </div>
+  );
+}
+
+function CouponField({
+  code,
+  onCodeChange,
+  onValidate,
+  isValidating,
+  preview,
+}: {
+  code: string;
+  onCodeChange: (value: string) => void;
+  onValidate: () => void;
+  isValidating: boolean;
+  preview: CouponPreview | null;
+}) {
+  return (
+    <div>
+      <label htmlFor="couponCode" className="sr-only">
+        Código de cupón o tarjeta de regalo
+      </label>
+      <div className="flex overflow-hidden rounded-lg border border-ink transition-shadow duration-200 focus-within:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]">
+        <input
+          id="couponCode"
+          placeholder="Código de cupón o tarjeta de regalo"
+          value={code}
+          onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
+          className="min-w-0 flex-1 bg-paper px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-muted"
+        />
+        <button
+          type="button"
+          onClick={onValidate}
+          disabled={!code.trim() || isValidating}
+          className="shrink-0 border-l border-ink px-5 text-xs font-semibold uppercase tracking-wide text-ink-muted transition-colors enabled:hover:text-ink disabled:cursor-not-allowed disabled:text-ink-muted/40"
+        >
+          {isValidating ? "Validando…" : "Aplicar"}
+        </button>
+      </div>
+
+      {preview && preview.valid && (
+        <p className="mt-2 text-sm text-ink">
+          Cupón aplicado
+          {preview.discountAmount !== undefined && (
+            <>
+              : <span className="font-medium">-{formatCurrency(preview.discountAmount)}</span>
+            </>
+          )}
+        </p>
+      )}
+      {preview && !preview.valid && (
+        <p className="mt-2 text-sm text-velvet">{COUPON_REASON_LABELS[preview.reason]}</p>
+      )}
     </div>
   );
 }
@@ -425,7 +487,7 @@ function PaymentStep({
         <div className="lg:order-1">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-semibold text-cream-soft">
-              4
+              3
             </span>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Pago</p>
           </div>
@@ -434,7 +496,11 @@ function PaymentStep({
               stripe={stripePromise}
               options={{ clientSecret: order.clientSecret, appearance: STRIPE_APPEARANCE }}
             >
-              <PaymentForm onSuccess={onSuccess} total={formatCurrency(order.total, order.currency.toUpperCase())} />
+              <PaymentForm
+                order={order}
+                onSuccess={onSuccess}
+                total={formatCurrency(order.total, order.currency.toUpperCase())}
+              />
             </Elements>
           </div>
         </div>
@@ -466,9 +532,18 @@ function PaymentStep({
   );
 }
 
-function PaymentForm({ onSuccess, total }: { onSuccess: () => void; total: string }) {
+function PaymentForm({
+  order,
+  onSuccess,
+  total,
+}: {
+  order: CreateOrderResult;
+  onSuccess: () => void;
+  total: string;
+}) {
   const stripe = useStripe();
   const elements = useElements();
+  const { isAuthenticated } = useAuth();
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -478,12 +553,26 @@ function PaymentForm({ onSuccess, total }: { onSuccess: () => void; total: strin
     setError(null);
     setIsPaying(true);
 
+    // Some payment methods (3-D Secure challenges, OXXO, SPEI) leave the page
+    // entirely — this is the only state that survives that round trip, read
+    // back by /checkout/retorno once Stripe sends the shopper home.
+    savePendingOrder({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      isAuthenticated,
+      publishableKey: order.publishableKey,
+    });
+
     const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
+      confirmParams: {
+        return_url: `${window.location.origin}/checkout/retorno`,
+      },
     });
 
     if (stripeError) {
+      clearPendingOrder();
       setError(stripeError.message ?? "No se pudo procesar el pago.");
       setIsPaying(false);
       return;
@@ -493,10 +582,12 @@ function PaymentForm({ onSuccess, total }: { onSuccess: () => void; total: strin
       paymentIntent &&
       (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")
     ) {
+      clearPendingOrder();
       onSuccess();
       return;
     }
 
+    clearPendingOrder();
     setError("No se pudo confirmar el pago. Intenta de nuevo.");
     setIsPaying(false);
   }

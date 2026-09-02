@@ -72,7 +72,10 @@ export interface ApiStoreProduct {
   color?: string;
   finalPrice: number;
   appliedDiscount?: ApiAppliedDiscount;
-  category: ApiCategory;
+  // Optional because it's genuinely missing on POST /me/wishlist's response
+  // (unlike everywhere else this shape appears) — a real API inconsistency,
+  // not a typing nicety. See mapCategory().
+  category?: ApiCategory;
   tags: ApiTag[];
   images: string[];
   availableSizes: Size[];
@@ -87,7 +90,8 @@ interface ApiPaginated<T> {
   totalPages: number;
 }
 
-function mapCategory(api: ApiCategory): Category {
+function mapCategory(api: ApiCategory | undefined): Category {
+  if (!api) return { slug: "", name: "" };
   const key = api.name.trim().toLowerCase();
   return CATEGORY_OVERRIDES[key] ?? { slug: key.replace(/\s+/g, "-"), name: api.name };
 }
