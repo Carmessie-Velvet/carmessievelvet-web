@@ -1,0 +1,526 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import type { Appearance } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+import { useCart } from "@/context/cart-context";
+import { useAuth } from "@/context/auth-context";
+import { orderService } from "@/services/order-service";
+import { productService } from "@/services/product-service";
+import { getErrorMessage } from "@/lib/get-error-message";
+import { formatCurrency } from "@/lib/format-currency";
+import { FormField } from "@/components/ui/FormField";
+import { buttonClasses } from "@/components/ui/Button";
+import type { CreateOrderResult, ShippingAddress } from "@/types/order";
+import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
+
+const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
+  NOT_FOUND: "No encontramos ese cupón.",
+  DISABLED: "Este cupón ya no está disponible.",
+  NOT_STARTED: "Este cupón todavía no está activo.",
+  EXPIRED: "Este cupón ya expiró.",
+  USAGE_LIMIT_REACHED: "Este cupón alcanzó su límite de usos.",
+  BELOW_MINIMUM_AMOUNT: "Tu compra no alcanza el mínimo para aplicar este cupón.",
+};
+
+const EMPTY_ADDRESS: ShippingAddress = {
+  fullName: "",
+  phone: "",
+  line1: "",
+  line2: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  country: "MX",
+};
+
+// Keeps Stripe's own PaymentElement UI from reading as a foreign, default-
+// white widget dropped into an otherwise sharp-cornered, cream/ink/velvet
+// page — themed straight from the brand's own tokens (see globals.css).
+const STRIPE_APPEARANCE: Appearance = {
+  theme: "stripe",
+  variables: {
+    colorPrimary: "#2a1f1c",
+    colorBackground: "#fffdfb",
+    colorText: "#2a1f1c",
+    colorTextSecondary: "#6b5d52",
+    colorDanger: "#4b1530",
+    fontFamily: "Archivo, system-ui, sans-serif",
+    borderRadius: "0px",
+    spacingUnit: "4px",
+  },
+  rules: {
+    ".Label": {
+      fontSize: "11px",
+      fontWeight: "600",
+      letterSpacing: "0.16em",
+      textTransform: "uppercase",
+      color: "#6b5d52",
+    },
+    ".Input": {
+      border: "1px solid #dccfbf",
+      boxShadow: "none",
+    },
+    ".Input:focus": {
+      border: "1px solid #2a1f1c",
+      boxShadow: "0 0 0 3px rgba(75,21,48,0.08)",
+    },
+    ".Tab": { border: "1px solid #dccfbf", boxShadow: "none" },
+    ".Tab:hover": { border: "1px solid #2a1f1c" },
+    ".Tab--selected": { border: "1px solid #2a1f1c", boxShadow: "none" },
+  },
+};
+
+export default function CheckoutPage() {
+  const router = useRouter();
+  const { items, subtotal, clear } = useCart();
+  const { user, isAuthenticated } = useAuth();
+
+  const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [savePaymentMethod, setSavePaymentMethod] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<CreateOrderResult | null>(null);
+
+  if (items.length === 0 && !order) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">
+          Tu carrito está vacío
+        </h1>
+        <Link href="/tienda" className={`${buttonClasses("solid")} mt-8`}>
+          Ir a la tienda
+        </Link>
+      </div>
+    );
+  }
+
+  function updateAddress<K extends keyof ShippingAddress>(key: K, value: string) {
+    setAddress((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleCreateOrder(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const result = await orderService.createOrder({
+        guestEmail: isAuthenticated ? undefined : guestEmail,
+        items: items.map((item) => ({
+          productId: item.product.id,
+          size: item.size,
+          quantity: item.quantity,
+        })),
+        shippingAddress: address,
+        couponCode: couponCode || undefined,
+        savePaymentMethod: isAuthenticated ? savePaymentMethod : undefined,
+      });
+      setOrder(result);
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo crear el pedido."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleValidateCoupon() {
+    const code = couponCode.trim();
+    if (!code) return;
+    setIsValidatingCoupon(true);
+    setCouponPreview(null);
+    try {
+      const result = await productService.validateCoupon(
+        code,
+        items.map((item) => ({
+          productId: item.product.id,
+          size: item.size,
+          quantity: item.quantity,
+        }))
+      );
+      setCouponPreview(result);
+    } catch {
+      setCouponPreview({
+        valid: false,
+        reason: "NOT_FOUND",
+        message: "No se pudo validar el cupón.",
+        code,
+      });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  }
+
+  if (order) {
+    return (
+      <PaymentStep
+        order={order}
+        onSuccess={() => {
+          clear();
+          router.push(
+            isAuthenticated
+              ? `/cuenta/pedidos/${order.id}`
+              : `/checkout/confirmacion?order=${encodeURIComponent(order.orderNumber)}`
+          );
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <h1 className="text-3xl font-black uppercase tracking-tight text-ink">
+        Checkout
+      </h1>
+
+      <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
+        <form onSubmit={handleCreateOrder} className="flex flex-col gap-8 lg:order-1">
+          <section>
+            <SectionTitle step={1} label="Contacto" />
+            {!isAuthenticated && (
+              <FormField
+                id="guestEmail"
+                label="Correo electrónico"
+                type="email"
+                required
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+              />
+            )}
+            {isAuthenticated && user && (
+              <p className="text-sm text-ink-muted">
+                Se usará el correo de tu cuenta: <span className="text-ink">{user.email}</span>
+              </p>
+            )}
+          </section>
+
+          <section>
+            <SectionTitle step={2} label="Dirección de envío" />
+            <div className="flex flex-col gap-4">
+              <FormField
+                id="fullName"
+                label="Nombre completo"
+                required
+                value={address.fullName}
+                onChange={(e) => updateAddress("fullName", e.target.value)}
+              />
+              <FormField
+                id="phone"
+                label="Teléfono"
+                type="tel"
+                value={address.phone}
+                onChange={(e) => updateAddress("phone", e.target.value)}
+              />
+              <FormField
+                id="line1"
+                label="Dirección"
+                required
+                value={address.line1}
+                onChange={(e) => updateAddress("line1", e.target.value)}
+              />
+              <FormField
+                id="line2"
+                label="Depto / referencias (opcional)"
+                value={address.line2}
+                onChange={(e) => updateAddress("line2", e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  id="city"
+                  label="Ciudad"
+                  required
+                  value={address.city}
+                  onChange={(e) => updateAddress("city", e.target.value)}
+                />
+                <FormField
+                  id="state"
+                  label="Estado"
+                  required
+                  value={address.state}
+                  onChange={(e) => updateAddress("state", e.target.value)}
+                />
+              </div>
+              <FormField
+                id="postalCode"
+                label="Código postal"
+                required
+                value={address.postalCode}
+                onChange={(e) => updateAddress("postalCode", e.target.value)}
+              />
+            </div>
+          </section>
+
+          <section>
+            <SectionTitle step={3} label="Cupón" />
+            <label htmlFor="couponCode" className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Código de cupón (opcional)
+            </label>
+            <div className="mt-1.5 flex gap-2">
+              <input
+                id="couponCode"
+                value={couponCode}
+                onChange={(e) => {
+                  setCouponCode(e.target.value.toUpperCase());
+                  setCouponPreview(null);
+                }}
+                className="flex-1 border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+              />
+              <button
+                type="button"
+                onClick={handleValidateCoupon}
+                disabled={!couponCode.trim() || isValidatingCoupon}
+                className={buttonClasses("outline", "shrink-0 px-5 disabled:opacity-40")}
+              >
+                {isValidatingCoupon ? "Validando…" : "Validar"}
+              </button>
+            </div>
+
+            {couponPreview && couponPreview.valid && (
+              <p className="mt-2 text-sm text-ink">
+                Cupón aplicado
+                {couponPreview.discountAmount !== undefined && (
+                  <>
+                    : <span className="font-medium">-{formatCurrency(couponPreview.discountAmount)}</span>
+                  </>
+                )}
+              </p>
+            )}
+            {couponPreview && !couponPreview.valid && (
+              <p className="mt-2 text-sm text-velvet">
+                {COUPON_REASON_LABELS[couponPreview.reason]}
+              </p>
+            )}
+
+            {isAuthenticated && (
+              <label className="mt-4 flex items-center gap-2 text-sm text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={savePaymentMethod}
+                  onChange={(e) => setSavePaymentMethod(e.target.checked)}
+                />
+                Guardar esta tarjeta para futuras compras
+              </label>
+            )}
+          </section>
+
+          {error && <p className="text-sm text-velvet">{error}</p>}
+
+          <button type="submit" disabled={isSubmitting} className={buttonClasses("solid")}>
+            {isSubmitting ? "Procesando…" : "Continuar al pago"}
+          </button>
+        </form>
+
+        <OrderSummary
+          className="lg:sticky lg:top-24 lg:order-2"
+          lines={items.map((item) => ({
+            key: `${item.product.id}-${item.size}`,
+            image: item.product.images[0],
+            name: item.product.name,
+            meta: `Talla ${item.size} · Cant. ${item.quantity}`,
+            amount: formatCurrency(item.product.price * item.quantity),
+          }))}
+          rows={[{ label: "Subtotal", value: formatCurrency(subtotal) }]}
+          note="El total final (con descuentos o cupón aplicado) se calcula en el siguiente paso."
+        />
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ step, label }: { step: number; label: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-2.5">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-semibold text-cream-soft">
+        {step}
+      </span>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink">{label}</p>
+    </div>
+  );
+}
+
+function OrderSummary({
+  lines,
+  rows,
+  note,
+  className = "",
+}: {
+  lines: { key: string; image: { src: string; alt: string }; name: string; meta: string; amount: string }[];
+  rows: { label: string; value: string; strong?: boolean }[];
+  note?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`border border-sand bg-cream-soft p-6 ${className}`}>
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+        Tu pedido
+      </p>
+      <ul className="mt-3 flex flex-col divide-y divide-sand">
+        {lines.map((line) => (
+          <li key={line.key} className="flex gap-3 py-3 first:pt-0">
+            <div className="relative h-16 w-13 shrink-0 overflow-hidden bg-sand">
+              <Image src={line.image.src} alt={line.image.alt} fill sizes="52px" className="object-cover" />
+            </div>
+            <div className="flex flex-1 items-center justify-between">
+              <div>
+                <p className="text-sm text-ink">{line.name}</p>
+                <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
+              </div>
+              <p className="text-sm font-medium text-ink">{line.amount}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-2 flex flex-col gap-1.5 border-t border-sand pt-4 text-sm">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className={`flex justify-between ${row.strong ? "text-base font-semibold text-ink" : "text-ink-muted"}`}
+          >
+            <span>{row.label}</span>
+            <span className={row.strong ? "text-ink" : "text-ink"}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {note && <p className="mt-3 text-xs text-ink-muted">{note}</p>}
+
+      <div className="mt-5 flex items-center gap-2 border-t border-sand pt-4 text-xs text-ink-muted">
+        <LockIcon />
+        Pago 100% seguro y encriptado
+      </div>
+    </div>
+  );
+}
+
+function PaymentStep({
+  order,
+  onSuccess,
+}: {
+  order: CreateOrderResult;
+  onSuccess: () => void;
+}) {
+  const stripePromise = useMemo(
+    () => loadStripe(order.publishableKey),
+    [order.publishableKey]
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <h1 className="text-3xl font-black uppercase tracking-tight text-ink">Pago</h1>
+
+      <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
+        <div className="lg:order-1">
+          <div className="mb-4 flex items-center gap-2.5">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-semibold text-cream-soft">
+              4
+            </span>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Pago</p>
+          </div>
+          <div className="border border-sand bg-paper p-5">
+            <Elements
+              stripe={stripePromise}
+              options={{ clientSecret: order.clientSecret, appearance: STRIPE_APPEARANCE }}
+            >
+              <PaymentForm onSuccess={onSuccess} total={formatCurrency(order.total, order.currency.toUpperCase())} />
+            </Elements>
+          </div>
+        </div>
+
+        <OrderSummary
+          className="lg:sticky lg:top-24 lg:order-2"
+          lines={order.items.map((item) => ({
+            key: item.id,
+            image: { src: item.productImage, alt: item.productName },
+            name: item.productName,
+            meta: `Talla ${item.size} · Cant. ${item.quantity}`,
+            amount: formatCurrency(item.lineTotal, order.currency.toUpperCase()),
+          }))}
+          rows={[
+            { label: "Subtotal", value: formatCurrency(order.subtotal, order.currency.toUpperCase()) },
+            ...(order.discountTotal > 0
+              ? [
+                  {
+                    label: `Descuento${order.couponCode ? ` (${order.couponCode})` : ""}`,
+                    value: `−${formatCurrency(order.discountTotal, order.currency.toUpperCase())}`,
+                  },
+                ]
+              : []),
+            { label: "Total", value: formatCurrency(order.total, order.currency.toUpperCase()), strong: true },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PaymentForm({ onSuccess, total }: { onSuccess: () => void; total: string }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isPaying, setIsPaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePay(event: React.FormEvent) {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+    setError(null);
+    setIsPaying(true);
+
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+    });
+
+    if (stripeError) {
+      setError(stripeError.message ?? "No se pudo procesar el pago.");
+      setIsPaying(false);
+      return;
+    }
+
+    if (
+      paymentIntent &&
+      (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")
+    ) {
+      onSuccess();
+      return;
+    }
+
+    setError("No se pudo confirmar el pago. Intenta de nuevo.");
+    setIsPaying(false);
+  }
+
+  return (
+    <form onSubmit={handlePay} className="flex flex-col gap-5">
+      <PaymentElement />
+      {error && <p className="text-sm text-velvet">{error}</p>}
+      <button
+        type="submit"
+        disabled={!stripe || isPaying}
+        className={buttonClasses("solid")}
+      >
+        {isPaying ? "Procesando pago…" : `Pagar ${total}`}
+      </button>
+    </form>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="10" rx="1" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}

@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+:root {
+  /* Combined height of the fixed AnnouncementBar + Header stack (see
+     layout.tsx). Single source of truth for the top padding non-hero pages
+     need, and the negative margin the homepage hero cancels it with. */
+  --header-stack-height: 100px;
+}
+
 @theme {
   --color-cream: #f1e9df;
   --color-cream-soft: #f8f3ec;

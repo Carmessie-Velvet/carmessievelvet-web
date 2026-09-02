@@ -3,26 +3,47 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/context/cart-context";
 import { categories } from "@/mocks/categories";
+import { useScrolled } from "@/lib/use-scrolled";
 import { MobileMenu } from "./MobileMenu";
+import { HeaderSearch } from "./HeaderSearch";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { itemCount, openDrawer } = useCart();
+  const pathname = usePathname();
+  const scrolled = useScrolled();
+
+  // Only the homepage opens on a full-bleed hero, so only there does the
+  // header start transparent (see the reference in the brief). Every other
+  // route keeps the always-solid header it already had.
+  const isHome = pathname === "/";
+  const transparent = isHome && !scrolled;
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-sand bg-cream/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <header
+        className={`border-b transition-colors duration-300 ${
+          transparent
+            ? "border-transparent bg-transparent"
+            : "border-sand bg-cream/95 backdrop-blur"
+        }`}
+      >
+        <div
+          className={`mx-auto flex h-16 max-w-6xl items-center justify-between px-4 transition-colors duration-300 sm:px-6 ${
+            transparent ? "text-cream-soft" : "text-ink"
+          }`}
+        >
           <button
             type="button"
             aria-label="Abrir menú"
             onClick={() => setMenuOpen(true)}
             className="flex h-9 w-9 flex-col items-start justify-center gap-1.5 lg:hidden"
           >
-            <span className="h-px w-6 bg-ink" />
-            <span className="h-px w-6 bg-ink" />
+            <span className="h-px w-6 bg-current" />
+            <span className="h-px w-6 bg-current" />
           </button>
 
           <nav className="hidden items-center gap-6 lg:flex">
@@ -30,7 +51,11 @@ export function Header() {
               <Link
                 key={cat.slug}
                 href={`/tienda?categoria=${cat.slug}`}
-                className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
+                className={
+                  transparent
+                    ? "text-xs font-medium uppercase tracking-[0.16em] text-cream-soft/80 transition-colors hover:text-cream-soft"
+                    : "text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
+                }
               >
                 {cat.name}
               </Link>
@@ -39,7 +64,11 @@ export function Header() {
 
           <Link href="/" aria-label="Carmessie Velvet — inicio" className="shrink-0">
             <Image
-              src="/brand/carmessie-mark-ink.png"
+              src={
+                transparent
+                  ? "/brand/carmessie-mark-white.png"
+                  : "/brand/carmessie-mark-ink.png"
+              }
               alt="Carmessie Velvet"
               width={186}
               height={32}
@@ -51,9 +80,21 @@ export function Header() {
           <div className="flex items-center gap-4">
             <Link
               href="/tienda"
-              className="hidden text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet lg:block"
+              className={
+                transparent
+                  ? "hidden text-xs font-medium uppercase tracking-[0.16em] text-cream-soft/80 transition-colors hover:text-cream-soft lg:block"
+                  : "hidden text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet lg:block"
+              }
             >
               Ver todo
+            </Link>
+            <HeaderSearch />
+            <Link
+              href="/cuenta"
+              aria-label="Mi cuenta"
+              className="flex h-9 w-9 items-center justify-center"
+            >
+              <UserIcon />
             </Link>
             <button
               type="button"
@@ -77,6 +118,22 @@ export function Header() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5 20c0-3.6 3.13-6 7-6s7 2.4 7 6" />
+    </svg>
+  );
+}
+
 function BagIcon() {
   return (
     <svg
@@ -84,7 +141,7 @@ function BagIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth={1.4}
-      className="h-5 w-5 text-ink"
+      className="h-5 w-5"
       aria-hidden="true"
     >
       <path d="M6 8h12l-1 12.5a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9L6 8Z" />

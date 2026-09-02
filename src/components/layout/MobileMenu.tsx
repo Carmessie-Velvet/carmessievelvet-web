@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { categories } from "@/mocks/categories";
 import { SlideOver } from "@/components/ui/SlideOver";
+import { useAuth } from "@/context/auth-context";
 
 export function MobileMenu({
   isOpen,
@@ -12,6 +13,8 @@ export function MobileMenu({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const { isAuthenticated } = useAuth();
+
   return (
     <SlideOver
       isOpen={isOpen}
@@ -32,7 +35,7 @@ export function MobileMenu({
           type="button"
           onClick={onClose}
           aria-label="Cerrar menú"
-          className="flex h-8 w-8 items-center justify-center text-ink"
+          className="flex h-8 w-8 items-center justify-center text-ink transition-transform duration-300 ease-out hover:rotate-90"
         >
           <CloseIcon />
         </button>
@@ -62,6 +65,16 @@ export function MobileMenu({
           </li>
         </ul>
       </nav>
+
+      <div className="border-t border-sand px-5 py-4">
+        <Link
+          href="/cuenta"
+          onClick={onClose}
+          className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
+        >
+          {isAuthenticated ? "Mi cuenta" : "Iniciar sesión"}
+        </Link>
+      </div>
     </SlideOver>
   );
 }

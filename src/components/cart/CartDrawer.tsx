@@ -29,7 +29,7 @@ export function CartDrawer() {
           type="button"
           onClick={closeDrawer}
           aria-label="Cerrar carrito"
-          className="flex h-8 w-8 items-center justify-center text-ink"
+          className="flex h-8 w-8 items-center justify-center text-ink transition-transform duration-300 ease-out hover:rotate-90"
         >
           <CloseIcon />
         </button>
