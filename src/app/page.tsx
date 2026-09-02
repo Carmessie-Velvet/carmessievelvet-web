@@ -10,6 +10,9 @@ const categoryPreview: Record<string, string> = {
   sets: "/products/set-black-fur.jpeg",
 };
 
+// Catalog data (new arrivals, categories) is live in the real API.
+export const revalidate = 60;
+
 export default async function HomePage() {
   const [newArrivals, categories] = await Promise.all([
     productService.getNewArrivals(4),
@@ -18,7 +21,7 @@ export default async function HomePage() {
 
   return (
     <div>
-      <section className="relative h-[88svh] min-h-[520px] w-full overflow-hidden bg-ink">
+      <section className="relative -mt-[var(--header-stack-height)] h-[88svh] min-h-[520px] w-full overflow-hidden bg-ink">
         <Image
           src="/products/corset-brocade.jpeg"
           alt="Corset Alado Brocado de la colección Carmessie Velvet"
@@ -28,6 +31,7 @@ export default async function HomePage() {
           className="object-cover opacity-90"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/70 via-ink/25 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-16">
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-cream-soft/80">
             Nueva colección

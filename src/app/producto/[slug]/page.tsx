@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 import { productService } from "@/services/product-service";
 import { formatCurrency } from "@/lib/format-currency";
 import { AddToCartForm } from "@/components/product/AddToCartForm";
+import { WishlistButton } from "@/components/product/WishlistButton";
 
-export async function generateStaticParams() {
-  const products = await productService.getAll();
-  return products.map((product) => ({ slug: product.slug }));
-}
+// Catalog data (price, stock) is live in the real API — render on demand
+// with a short cache instead of pre-generating every product at build time.
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
@@ -70,6 +70,8 @@ export default async function ProductPage({
           <p className="mt-6 max-w-md text-sm leading-relaxed text-ink-muted">
             {product.description}
           </p>
+
+          <WishlistButton product={product} />
 
           <div className="mt-8 border-t border-sand pt-8">
             <AddToCartForm product={product} />

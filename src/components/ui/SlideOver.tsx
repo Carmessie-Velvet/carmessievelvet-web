@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 
@@ -21,7 +23,21 @@ export function SlideOver({
   useLockBodyScroll(isOpen);
   useEscapeKey(onClose, isOpen);
 
-  return (
+  // Portal to <body>: a SlideOver can be triggered from anywhere (e.g. the
+  // header's search icon), and an ancestor with backdrop-blur/transform
+  // (the header itself does) creates a new containing block for
+  // `position: fixed` descendants, clipping the overlay to that ancestor's
+  // box instead of the viewport. Rendering at the body root sidesteps that
+  // regardless of where the trigger lives. Mount-gated so server and the
+  // client's first render both output nothing, avoiding a hydration mismatch.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div
@@ -52,6 +68,7 @@ export function SlideOver({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

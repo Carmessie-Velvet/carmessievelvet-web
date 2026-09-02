@@ -47,14 +47,12 @@ export default function CarritoPage() {
             {formatCurrency(subtotal)}
           </span>
         </p>
-        <button
-          type="button"
-          className={buttonClasses("solid", "w-full sm:w-auto")}
-          disabled
-          title="El checkout se conecta cuando el backend esté listo"
+        <Link
+          href="/checkout"
+          className={buttonClasses("solid", "w-full text-center sm:w-auto")}
         >
           Finalizar compra
-        </button>
+        </Link>
       </div>
     </div>
   );

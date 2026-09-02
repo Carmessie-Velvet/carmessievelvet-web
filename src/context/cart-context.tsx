@@ -20,11 +20,27 @@ function createCartStore() {
   let loadedFromStorage = false;
   const listeners = new Set<Listener>();
 
+  // Mirrors next.config.ts's images.remotePatterns — a cart item pointing at
+  // any other host would crash next/image, so drop it instead (e.g. leftover
+  // entries from an earlier image host the catalog no longer uses).
+  function isAllowedImageHost(src: string): boolean {
+    if (src.startsWith("/")) return true;
+    try {
+      const { hostname } = new URL(src);
+      return (
+        /\.s3\.[^.]+\.amazonaws\.com$/.test(hostname) ||
+        hostname === "via.placeholder.com"
+      );
+    } catch {
+      return false;
+    }
+  }
+
   function isValidCartItem(item: CartItem): boolean {
     return (
       !!item.product &&
       Array.isArray(item.product.images) &&
-      item.product.images.every((image) => image.src.startsWith("/"))
+      item.product.images.every((image) => isAllowedImageHost(image.src))
     );
   }
 
