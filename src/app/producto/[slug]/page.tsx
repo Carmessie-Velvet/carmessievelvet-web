@@ -31,7 +31,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           {product.images.map((image) => (

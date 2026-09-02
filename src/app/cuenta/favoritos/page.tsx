@@ -27,7 +27,7 @@ export default function FavoritosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-black uppercase tracking-tight text-ink">
         Mis favoritos
       </h1>

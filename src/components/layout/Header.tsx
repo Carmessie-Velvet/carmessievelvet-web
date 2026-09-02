@@ -35,7 +35,7 @@ export function Header() {
         }`}
       >
         <div
-          className={`relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4 transition-colors duration-300 sm:px-6 ${
+          className={`relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 transition-colors duration-300 sm:px-6 ${
             transparent ? "text-cream-soft" : "text-ink"
           }`}
         >

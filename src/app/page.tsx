@@ -55,7 +55,7 @@ export default async function HomePage() {
 
       <VelvetDivider label="Tiraje corto · Piezas que no se repiten" />
 
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <Reveal>
           <div className="mb-8 flex items-end justify-between">
             <h2 className="text-2xl font-black uppercase tracking-tight text-ink sm:text-3xl">
@@ -73,7 +73,7 @@ export default async function HomePage() {
       </section>
 
       <section className="bg-cream py-12 sm:py-16">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <Reveal>
             <h2 className="mb-8 text-2xl font-black uppercase tracking-tight text-ink sm:text-3xl">
               Explora por categoría

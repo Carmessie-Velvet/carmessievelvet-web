@@ -12,7 +12,7 @@ export default function CarritoPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-6xl flex-col items-center px-4 py-24 text-center">
+      <div className="mx-auto flex max-w-7xl flex-col items-center px-4 py-24 text-center">
         <h1 className="text-3xl font-black uppercase tracking-tight text-ink">
           Tu carrito está vacío
         </h1>

@@ -14,7 +14,7 @@ const helpLinks = [
 export function Footer() {
   return (
     <footer className="bg-ink text-cream-soft">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-6 py-14 sm:grid-cols-4 sm:gap-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-6 py-14 sm:grid-cols-4 sm:gap-10">
         <div className="col-span-2 sm:col-span-1">
           <Image
             src="/brand/carmessie-mark-white.png"

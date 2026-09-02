@@ -18,7 +18,7 @@ const DISPLAY_VIDEOS = [...VIDEOS, VIDEOS[0]];
 export function VideoShowcase() {
   return (
     <section className="bg-cream py-12 sm:py-16">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {DISPLAY_VIDEOS.map((video, i) => (
             <Reveal key={`${video.src}-${i}`} delay={i * 0.08}>
