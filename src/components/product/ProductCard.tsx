@@ -38,10 +38,10 @@ export function ProductCard({ product }: { product: Product }) {
             onClick={handleToggleWishlist}
             aria-label={wishlisted ? `Quitar de favoritos: ${product.name}` : `Agregar a favoritos: ${product.name}`}
             aria-pressed={wishlisted}
-            className={`flex h-9 w-9 items-center justify-center rounded-full border text-ink transition-all duration-200 ${
+            className={`flex h-9 w-9 items-center justify-center rounded-full border text-ink shadow-sm transition-all duration-200 ${
               wishlisted
-                ? "border-velvet/40 bg-velvet/10"
-                : "border-transparent bg-transparent hover:border-velvet/50 hover:bg-paper/80"
+                ? "border-transparent bg-paper"
+                : "border-transparent bg-transparent shadow-none hover:border-velvet/50 hover:bg-paper/80 hover:shadow-sm"
             }`}
           >
             <HeartIcon filled={wishlisted} />
