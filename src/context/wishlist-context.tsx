@@ -1,19 +1,13 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "./auth-context";
 import { wishlistService } from "@/services/wishlist-service";
 import type { Product } from "@/types/product";
+import type { WishlistItem } from "@/types/wishlist";
 
 interface WishlistContextValue {
+  items: WishlistItem[];
   isWishlisted: (productId: string) => boolean;
   toggle: (product: Product) => Promise<void>;
 }
@@ -22,15 +16,18 @@ const WishlistContext = createContext<WishlistContextValue | null>(null);
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const [ids, setIds] = useState<Set<string>>(new Set());
+  const [items, setItems] = useState<WishlistItem[]>([]);
 
   useEffect(() => {
+    // No cleanup of `items` on logout: `isWishlisted` already gates on
+    // `isAuthenticated`, so stale items just stop being reflected in the UI
+    // rather than needing an extra synchronous reset here.
     if (!isAuthenticated) return;
     let cancelled = false;
     wishlistService
       .getAll()
-      .then((items) => {
-        if (!cancelled) setIds(new Set(items.map((item) => item.product.id)));
+      .then((data) => {
+        if (!cancelled) setItems(data);
       })
       .catch(() => {
         // Best-effort — hearts just stay unfilled if this fails.
@@ -40,13 +37,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isAuthenticated]);
 
-  const isWishlisted = useCallback(
-    (productId: string) => isAuthenticated && ids.has(productId),
-    [isAuthenticated, ids]
-  );
-
   // Guards against a rapid double-click on the same heart: without it, two
-  // clicks fired before React re-renders both read the same stale `ids`
+  // clicks fired before React re-renders both read the same stale `items`
   // snapshot and both resolve `currentlyIn` the same way — sending two
   // "add" calls instead of an add-then-remove. The backend's add is
   // idempotent so nothing duplicates, but the second click's intent (undo
@@ -55,40 +47,49 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // while one's already pending a no-op instead.
   const pendingRef = useRef<Set<string>>(new Set());
 
-  const toggle = useCallback(
-    async (product: Product) => {
-      if (pendingRef.current.has(product.id)) return;
-      pendingRef.current.add(product.id);
+  // Deliberately not wrapped in useCallback/useMemo: this context's value
+  // object is already a fresh reference on every render (see below), so
+  // memoizing the functions inside it buys nothing and is one more place a
+  // stale-dependency bug can hide.
+  function isWishlisted(productId: string): boolean {
+    return isAuthenticated && items.some((item) => item.product.id === productId);
+  }
 
-      const sku = product.slug.toUpperCase();
-      const currentlyIn = ids.has(product.id);
+  async function toggle(product: Product): Promise<void> {
+    if (pendingRef.current.has(product.id)) return;
+    pendingRef.current.add(product.id);
 
-      setIds((prev) => {
-        const next = new Set(prev);
-        if (currentlyIn) next.delete(product.id);
-        else next.add(product.id);
-        return next;
-      });
+    const sku = product.slug.toUpperCase();
+    const previousItems = items;
+    const currentlyIn = previousItems.some((item) => item.product.id === product.id);
 
-      try {
-        if (currentlyIn) await wishlistService.remove(sku);
-        else await wishlistService.add(sku);
-      } catch (err) {
-        setIds((prev) => {
-          const next = new Set(prev);
-          if (currentlyIn) next.add(product.id);
-          else next.delete(product.id);
-          return next;
-        });
-        throw err;
-      } finally {
-        pendingRef.current.delete(product.id);
+    if (currentlyIn) {
+      setItems(previousItems.filter((item) => item.product.id !== product.id));
+    } else {
+      setItems([
+        ...previousItems,
+        { id: `optimistic-${product.id}`, addedAt: new Date().toISOString(), product },
+      ]);
+    }
+
+    try {
+      if (currentlyIn) {
+        await wishlistService.remove(sku);
+      } else {
+        const created = await wishlistService.add(sku);
+        setItems((prev) =>
+          prev.map((item) => (item.id === `optimistic-${product.id}` ? created : item))
+        );
       }
-    },
-    [ids]
-  );
+    } catch (err) {
+      setItems(previousItems);
+      throw err;
+    } finally {
+      pendingRef.current.delete(product.id);
+    }
+  }
 
-  const value = useMemo(() => ({ isWishlisted, toggle }), [isWishlisted, toggle]);
+  const value: WishlistContextValue = { items, isWishlisted, toggle };
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }

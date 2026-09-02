@@ -66,13 +66,20 @@ export function MobileMenu({
         </ul>
       </nav>
 
-      <div className="border-t border-sand px-5 py-4">
+      <div className="flex items-center justify-between border-t border-sand px-5 py-4">
         <Link
           href="/cuenta"
           onClick={onClose}
           className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
         >
           {isAuthenticated ? "Mi cuenta" : "Iniciar sesión"}
+        </Link>
+        <Link
+          href="/cuenta/favoritos"
+          onClick={onClose}
+          className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
+        >
+          Favoritos
         </Link>
       </div>
     </SlideOver>

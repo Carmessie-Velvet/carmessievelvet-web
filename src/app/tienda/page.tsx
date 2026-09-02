@@ -50,7 +50,7 @@ export default async function TiendaPage({
   const activeCategory = categories.find((c) => c.slug === categoria);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
         {activeCategory ? activeCategory.name : "Toda la colección"}
       </h1>

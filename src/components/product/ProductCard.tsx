@@ -32,15 +32,25 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link href={`/producto/${product.slug}`} className="group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-sand">
-        <button
-          type="button"
-          onClick={handleToggleWishlist}
-          aria-label={wishlisted ? `Quitar de favoritos: ${product.name}` : `Agregar a favoritos: ${product.name}`}
-          aria-pressed={wishlisted}
-          className="absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-paper/90 text-ink transition-colors duration-200 hover:bg-paper"
-        >
-          <HeartIcon filled={wishlisted} />
-        </button>
+        <div className="group/wishlist absolute right-2.5 top-2.5 z-10">
+          <button
+            type="button"
+            onClick={handleToggleWishlist}
+            aria-label={wishlisted ? `Quitar de favoritos: ${product.name}` : `Agregar a favoritos: ${product.name}`}
+            aria-pressed={wishlisted}
+            className={`flex h-9 w-9 items-center justify-center rounded-full border text-ink shadow-sm transition-all duration-200 ${
+              wishlisted
+                ? "border-transparent bg-paper"
+                : "border-transparent bg-transparent shadow-none hover:border-velvet/50 hover:bg-paper/80 hover:shadow-sm"
+            }`}
+          >
+            <HeartIcon filled={wishlisted} />
+          </button>
+          <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-ink px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-cream-soft opacity-0 shadow-md transition-opacity duration-150 group-hover/wishlist:opacity-100">
+            {wishlisted ? "Quitar de favoritos" : "Agregar a favoritos"}
+            <span className="absolute left-full top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-ink" />
+          </span>
+        </div>
         <motion.div
           className="relative h-full w-full"
           whileHover={{ scale: 1.045 }}
@@ -70,21 +80,27 @@ export function ProductCard({ product }: { product: Product }) {
             Nuevo
           </span>
         )}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openQuickAdd(product);
-          }}
-          aria-label={`Agregar rápido: ${product.name}`}
-          className="absolute bottom-2.5 right-2.5 flex h-9 w-9 translate-y-2 items-center justify-center rounded-full bg-paper text-ink opacity-0 shadow-[0_6px_16px_-4px_rgba(42,31,28,0.35)] transition-all duration-300 hover:bg-ink hover:text-cream-soft group-hover:translate-y-0 group-hover:opacity-100"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4" aria-hidden="true">
-            <path d="M6 8h12l-1 12.5a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9L6 8Z" />
-            <path d="M9 8V6a3 3 0 0 1 6 0v2" />
-          </svg>
-        </button>
+        <div className="group/quickadd absolute bottom-2.5 right-2.5 z-10 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openQuickAdd(product);
+            }}
+            aria-label={`Agregar rápido: ${product.name}`}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-paper text-ink shadow-[0_6px_16px_-4px_rgba(42,31,28,0.35)] transition-colors duration-300 hover:bg-ink hover:text-cream-soft"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4" aria-hidden="true">
+              <path d="M6 8h12l-1 12.5a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9L6 8Z" />
+              <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+            </svg>
+          </button>
+          <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-ink px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-cream-soft opacity-0 shadow-md transition-opacity duration-150 group-hover/quickadd:opacity-100">
+            Agregar rápido
+            <span className="absolute left-full top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-ink" />
+          </span>
+        </div>
       </div>
       <div className="mt-3 flex items-start justify-between gap-2">
         <p className="text-sm text-ink">{product.name}</p>
