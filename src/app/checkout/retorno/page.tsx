@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "@/context/cart-context";
@@ -18,6 +18,14 @@ type Status = "checking" | "failed" | "unknown";
 // no-redirect path already trusts) using the hand-off left in sessionStorage
 // by handlePay() before it sent the shopper away.
 export default function RetornoPage() {
+  return (
+    <Suspense fallback={<RetornoLayout title="Confirmando tu pago…" />}>
+      <RetornoContent />
+    </Suspense>
+  );
+}
+
+function RetornoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clear } = useCart();
@@ -99,7 +107,7 @@ export default function RetornoPage() {
   );
 }
 
-function RetornoLayout({ title, children }: { title: string; children: React.ReactNode }) {
+function RetornoLayout({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center sm:px-6">
       <h1 className="text-2xl font-black uppercase tracking-tight text-ink">{title}</h1>
