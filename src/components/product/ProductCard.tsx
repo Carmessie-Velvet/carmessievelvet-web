@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import type { Product } from "@/types/product";
 import { formatCurrency } from "@/lib/format-currency";
 import { useQuickAdd } from "@/context/quick-add-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/auth-modal-context";
 import { HeartIcon } from "@/components/icons/HeartIcon";
 import { isSoldOut } from "@/lib/product-stock";
 
@@ -16,8 +16,8 @@ export function ProductCard({ product }: { product: Product }) {
   const [primary, secondary] = product.images;
   const { open: openQuickAdd } = useQuickAdd();
   const { isAuthenticated } = useAuth();
+  const { open: openAuthModal } = useAuthModal();
   const { isWishlisted, toggle } = useWishlist();
-  const router = useRouter();
   const wishlisted = isWishlisted(product.id);
   const soldOut = isSoldOut(product);
 
@@ -25,7 +25,7 @@ export function ProductCard({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      router.push("/cuenta/login");
+      openAuthModal("login");
       return;
     }
     toggle(product).catch(() => {});

@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/auth-modal-context";
+import { useRequireAuth } from "@/lib/use-require-auth";
 import { useWishlist } from "@/context/wishlist-context";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { buttonClasses } from "@/components/ui/Button";
 
 export default function FavoritosPage() {
-  const { isAuthenticated } = useAuth();
+  const { open: openAuthModal } = useAuthModal();
+  const isAuthenticated = useRequireAuth();
   const { items } = useWishlist();
 
   if (!isAuthenticated) {
@@ -19,9 +21,13 @@ export default function FavoritosPage() {
         <p className="mt-3 text-sm text-ink-muted">
           Inicia sesión para ver tus productos guardados.
         </p>
-        <Link href="/cuenta/login" className={`${buttonClasses("solid")} mt-8`}>
+        <button
+          type="button"
+          onClick={() => openAuthModal("login")}
+          className={`${buttonClasses("solid")} mt-8`}
+        >
           Iniciar sesión
-        </Link>
+        </button>
       </div>
     );
   }

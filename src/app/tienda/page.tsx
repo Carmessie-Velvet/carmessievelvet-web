@@ -55,13 +55,13 @@ export default async function TiendaPage({
         {activeCategory ? activeCategory.name : "Toda la colección"}
       </h1>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 flex gap-6 border-b border-sand">
         <Link
           href="/tienda"
-          className={`px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+          className={`border-b-2 py-3 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
             !activeCategory
-              ? "bg-ink text-cream-soft"
-              : "text-ink-muted hover:text-ink"
+              ? "border-ink text-ink"
+              : "border-transparent text-ink-muted hover:text-ink"
           }`}
         >
           Todo
@@ -70,10 +70,10 @@ export default async function TiendaPage({
           <Link
             key={cat.slug}
             href={`/tienda?categoria=${cat.slug}`}
-            className={`px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+            className={`border-b-2 py-3 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
               activeCategory?.slug === cat.slug
-                ? "bg-ink text-cream-soft"
-                : "text-ink-muted hover:text-ink"
+                ? "border-ink text-ink"
+                : "border-transparent text-ink-muted hover:text-ink"
             }`}
           >
             {cat.name}

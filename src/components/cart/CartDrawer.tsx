@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useCart } from "@/context/cart-context";
 import { useWishlist } from "@/context/wishlist-context";
@@ -18,6 +18,14 @@ export function CartDrawer() {
   const { items, subtotal, isDrawerOpen, closeDrawer } = useCart();
   const { items: wishlistItems, toggle: toggleWishlist } = useWishlist();
   const [activeTab, setActiveTab] = useState<Tab>("cart");
+
+  // The drawer never unmounts (it's mounted once in the layout and just
+  // hidden/shown), so a tab picked on a previous visit would otherwise stick
+  // around — e.g. leaving it on "Favoritos" and later adding something to
+  // the cart would reopen the drawer on the wrong tab.
+  useEffect(() => {
+    if (isDrawerOpen) setActiveTab("cart");
+  }, [isDrawerOpen]);
 
   return (
     <SlideOver

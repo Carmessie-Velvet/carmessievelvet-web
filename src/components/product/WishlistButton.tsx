@@ -1,20 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/auth-modal-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { HeartIcon } from "@/components/icons/HeartIcon";
 import type { Product } from "@/types/product";
 
 export function WishlistButton({ product }: { product: Product }) {
-  const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { open: openAuthModal } = useAuthModal();
   const { isWishlisted, toggle } = useWishlist();
   const wishlisted = isWishlisted(product.id);
 
   function handleClick() {
     if (!isAuthenticated) {
-      router.push("/cuenta/login");
+      openAuthModal("login");
       return;
     }
     toggle(product).catch(() => {});
