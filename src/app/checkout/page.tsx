@@ -560,7 +560,7 @@ function OrderSummary({
                   <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
                 </div>
                 {line.onQuantityChange && line.quantity !== undefined && (
-                  <div className="flex items-center border border-sand">
+                  <div className="flex w-fit items-center self-start border border-sand">
                     <button
                       type="button"
                       aria-label="Disminuir cantidad"
