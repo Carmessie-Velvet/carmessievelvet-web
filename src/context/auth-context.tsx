@@ -17,6 +17,8 @@ interface AuthContextValue {
   signup: (payload: SignupPayload) => Promise<void>;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
+  /** Consumes a password-reset token and logs the account in with the fresh session it returns. */
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,6 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authStore.setSession(nextSession);
   }, []);
 
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    const nextSession = await authService.resetPassword(token, newPassword);
+    authStore.setSession(nextSession);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authService.logout();
@@ -56,8 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup,
       login,
       logout,
+      resetPassword,
     }),
-    [session, signup, login, logout]
+    [session, signup, login, logout, resetPassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
