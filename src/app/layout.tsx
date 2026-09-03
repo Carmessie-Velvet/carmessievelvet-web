@@ -7,10 +7,12 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartProvider } from "@/context/cart-context";
 import { AuthProvider } from "@/context/auth-context";
+import { AuthModalProvider } from "@/context/auth-modal-context";
 import { WishlistProvider } from "@/context/wishlist-context";
 import { QuickAddProvider } from "@/context/quick-add-context";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { QuickAddModal } from "@/components/product/QuickAddModal";
+import { AuthModal } from "@/components/account/AuthModal";
 
 const archivo = Archivo({
   variable: "--font-archivo",
@@ -29,22 +31,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col font-sans">
         <MotionConfig reducedMotion="user">
           <AuthProvider>
-            <WishlistProvider>
-              <CartProvider>
-                <QuickAddProvider>
-                  <div className="fixed inset-x-0 top-0 z-40">
-                    <AnnouncementBar />
-                    <Header />
-                  </div>
-                  <main className="flex-1 pt-[var(--header-stack-height)]">
-                    {children}
-                  </main>
-                  <Footer />
-                  <CartDrawer />
-                  <QuickAddModal />
-                </QuickAddProvider>
-              </CartProvider>
-            </WishlistProvider>
+            <AuthModalProvider>
+              <WishlistProvider>
+                <CartProvider>
+                  <QuickAddProvider>
+                    <div className="fixed inset-x-0 top-0 z-40">
+                      <AnnouncementBar />
+                      <Header />
+                    </div>
+                    <main className="flex-1 pt-[var(--header-stack-height)]">
+                      {children}
+                    </main>
+                    <Footer />
+                    <CartDrawer />
+                    <QuickAddModal />
+                    <AuthModal />
+                  </QuickAddProvider>
+                </CartProvider>
+              </WishlistProvider>
+            </AuthModalProvider>
           </AuthProvider>
         </MotionConfig>
       </body>

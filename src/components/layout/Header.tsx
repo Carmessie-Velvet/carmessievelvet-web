@@ -6,6 +6,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/context/cart-context";
 import { useWishlist } from "@/context/wishlist-context";
+import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/auth-modal-context";
 import { categories } from "@/mocks/categories";
 import { useScrolled } from "@/lib/use-scrolled";
 import { MobileMenu } from "./MobileMenu";
@@ -16,6 +18,8 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { itemCount, openDrawer } = useCart();
   const { items: wishlistItems } = useWishlist();
+  const { isAuthenticated } = useAuth();
+  const { open: openAuthModal } = useAuthModal();
   const pathname = usePathname();
   const scrolled = useScrolled();
 
@@ -83,6 +87,16 @@ export function Header() {
             </Link>
 
             <nav className="hidden items-center gap-6 lg:flex">
+              <Link
+                href="/tienda"
+                className={
+                  transparent
+                    ? "text-xs font-medium uppercase tracking-[0.16em] text-cream-soft/80 transition-colors hover:text-cream-soft"
+                    : "text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet"
+                }
+              >
+                Todo
+              </Link>
               {categories.map((cat) => (
                 <Link
                   key={cat.slug}
@@ -101,25 +115,47 @@ export function Header() {
 
           <div className="flex items-center gap-4">
             <HeaderSearch />
-            <Link
-              href="/cuenta"
-              aria-label="Mi cuenta"
-              className="hidden h-9 w-9 items-center justify-center lg:flex"
-            >
-              <UserIcon />
-            </Link>
-            <Link
-              href="/cuenta/favoritos"
-              aria-label={`Favoritos, ${wishlistItems.length} producto${wishlistItems.length === 1 ? "" : "s"}`}
-              className="relative hidden h-9 w-9 items-center justify-center lg:flex"
-            >
-              <HeartIcon filled={false} className="h-5 w-5" />
-              {wishlistItems.length > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-velvet px-1 text-[10px] font-semibold text-cream-soft">
-                  {wishlistItems.length}
-                </span>
-              )}
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href="/cuenta"
+                aria-label="Mi cuenta"
+                className="hidden h-9 w-9 items-center justify-center lg:flex"
+              >
+                <UserIcon />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openAuthModal("login")}
+                aria-label="Iniciar sesión"
+                className="hidden h-9 w-9 items-center justify-center lg:flex"
+              >
+                <UserIcon />
+              </button>
+            )}
+            {isAuthenticated ? (
+              <Link
+                href="/cuenta/favoritos"
+                aria-label={`Favoritos, ${wishlistItems.length} producto${wishlistItems.length === 1 ? "" : "s"}`}
+                className="relative hidden h-9 w-9 items-center justify-center lg:flex"
+              >
+                <HeartIcon filled={false} className="h-5 w-5" />
+                {wishlistItems.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-velvet px-1 text-[10px] font-semibold text-cream-soft">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openAuthModal("login")}
+                aria-label="Favoritos"
+                className="hidden h-9 w-9 items-center justify-center lg:flex"
+              >
+                <HeartIcon filled={false} className="h-5 w-5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={openDrawer}

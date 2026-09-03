@@ -52,7 +52,7 @@ export function TiendaFilters() {
   const activeQuery = searchParams.get("q") ?? "";
 
   return (
-    <div ref={wrapRef} className="mt-6 flex flex-wrap items-center gap-3 border-b border-sand pb-6">
+    <div ref={wrapRef} className="mt-6 flex flex-wrap items-center gap-3">
       {activeQuery && (
         <button
           type="button"

@@ -14,15 +14,20 @@ import {
 } from "@stripe/react-stripe-js";
 import { useCart } from "@/context/cart-context";
 import { useAuth } from "@/context/auth-context";
+import { useAuthModal } from "@/context/auth-modal-context";
 import { orderService } from "@/services/order-service";
 import { productService } from "@/services/product-service";
+import { userService } from "@/services/user-service";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { formatCurrency } from "@/lib/format-currency";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
+import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
+import { cardBrandLabel } from "@/lib/card-brand-label";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
+import type { PaymentMethod } from "@/types/user";
 
 const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   NOT_FOUND: "No encontramos ese cupón.",
@@ -85,6 +90,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clear } = useCart();
   const { user, isAuthenticated } = useAuth();
+  const { open: openAuthModal } = useAuthModal();
 
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [guestEmail, setGuestEmail] = useState("");
@@ -95,6 +101,27 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
+  const [savedMethods, setSavedMethods] = useState<PaymentMethod[] | null>(null);
+
+  // Fetched once here (not re-fetched in the payment step) so the "guardar
+  // tarjeta" checkbox below can hide itself for a shopper who already has a
+  // saved card — showing "save this card" before they've even reached the
+  // card form is exactly what read as broken.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    userService
+      .getPaymentMethods()
+      .then((methods) => {
+        if (!cancelled) setSavedMethods(methods);
+      })
+      .catch(() => {
+        // Best-effort — worst case the checkbox just stays visible.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   // Prefills from the shipping address of the user's most recent order, but
   // only while the form is still untouched — an address the shopper already
@@ -192,6 +219,7 @@ export default function CheckoutPage() {
     return (
       <PaymentStep
         order={order}
+        savedMethods={savedMethods}
         onSuccess={() => {
           clear();
           router.push(
@@ -216,12 +244,13 @@ export default function CheckoutPage() {
             <div className="mb-4 flex items-center justify-between gap-4">
               <SectionTitle step={1} label="Contacto" />
               {!isAuthenticated && (
-                <Link
-                  href="/cuenta/login"
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
                   className="text-xs font-medium uppercase tracking-[0.16em] text-ink underline underline-offset-2 transition-colors hover:text-velvet"
                 >
                   Iniciar sesión
-                </Link>
+                </button>
               )}
             </div>
             {!isAuthenticated && (
@@ -297,14 +326,14 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          {isAuthenticated && (
+          {isAuthenticated && savedMethods && savedMethods.length === 0 && (
             <label className="flex items-center gap-2 text-sm text-ink-muted">
               <input
                 type="checkbox"
                 checked={savePaymentMethod}
                 onChange={(e) => setSavePaymentMethod(e.target.checked)}
               />
-              Guardar esta tarjeta para futuras compras
+              Guardar la tarjeta que use en el siguiente paso para mis próximas compras
             </label>
           )}
 
@@ -469,9 +498,11 @@ function CouponField({
 
 function PaymentStep({
   order,
+  savedMethods,
   onSuccess,
 }: {
   order: CreateOrderResult;
+  savedMethods: PaymentMethod[] | null;
   onSuccess: () => void;
 }) {
   const stripePromise = useMemo(
@@ -498,6 +529,7 @@ function PaymentStep({
             >
               <PaymentForm
                 order={order}
+                savedMethods={savedMethods}
                 onSuccess={onSuccess}
                 total={formatCurrency(order.total, order.currency.toUpperCase())}
               />
@@ -534,10 +566,12 @@ function PaymentStep({
 
 function PaymentForm({
   order,
+  savedMethods,
   onSuccess,
   total,
 }: {
   order: CreateOrderResult;
+  savedMethods: PaymentMethod[] | null;
   onSuccess: () => void;
   total: string;
 }) {
@@ -545,11 +579,18 @@ function PaymentForm({
   const elements = useElements();
   const { isAuthenticated } = useAuth();
   const [isPaying, setIsPaying] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasSavedMethods = !!savedMethods && savedMethods.length > 0;
+  const [selectedMethodId, setSelectedMethodId] = useState<string>(
+    hasSavedMethods ? savedMethods![0].id : "new"
+  );
+  const usingNewCard = !hasSavedMethods || selectedMethodId === "new";
 
   async function handlePay(event: React.FormEvent) {
     event.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe) return;
+    if (usingNewCard && !elements) return;
     setError(null);
     setIsPaying(true);
 
@@ -563,13 +604,21 @@ function PaymentForm({
       publishableKey: order.publishableKey,
     });
 
-    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-      confirmParams: {
-        return_url: `${window.location.origin}/checkout/retorno`,
-      },
-    });
+    // Paying with an already-saved card skips the Payment Element entirely —
+    // confirmCardPayment against an existing PaymentMethod id (no card data
+    // to collect) instead of the elements-bound confirmPayment used for a
+    // freshly-entered card.
+    const { error: stripeError, paymentIntent } = usingNewCard
+      ? await stripe.confirmPayment({
+          elements: elements!,
+          redirect: "if_required",
+          confirmParams: {
+            return_url: `${window.location.origin}/checkout/retorno`,
+          },
+        })
+      : await stripe.confirmCardPayment(order.clientSecret, {
+          payment_method: selectedMethodId,
+        });
 
     if (stripeError) {
       clearPendingOrder();
@@ -583,6 +632,13 @@ function PaymentForm({
       (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")
     ) {
       clearPendingOrder();
+      // Stripe confirming client-side isn't the same as the order being
+      // PAID — that only happens once the payment_intent.succeeded webhook
+      // lands (docs/API-FRONTEND.md sección 7). This is that "confirmando
+      // pago" screen the docs call for, backed by a real poll instead of a
+      // fake delay.
+      setIsConfirming(true);
+      await waitForOrderPaid(order.id, isAuthenticated);
       onSuccess();
       return;
     }
@@ -592,18 +648,107 @@ function PaymentForm({
     setIsPaying(false);
   }
 
+  if (isConfirming) {
+    return <ConfirmingPayment />;
+  }
+
   return (
     <form onSubmit={handlePay} className="flex flex-col gap-5">
-      <PaymentElement />
+      {hasSavedMethods && (
+        <SavedCardPicker
+          methods={savedMethods!}
+          selectedId={selectedMethodId}
+          onSelect={setSelectedMethodId}
+        />
+      )}
+      {usingNewCard && <PaymentElement />}
       {error && <p className="text-sm text-velvet">{error}</p>}
       <button
         type="submit"
         disabled={!stripe || isPaying}
-        className={buttonClasses("solid")}
+        className={`${buttonClasses("solid")} gap-2.5`}
       >
+        {isPaying && <Spinner className="border-cream-soft/40 border-t-cream-soft" />}
         {isPaying ? "Procesando pago…" : `Pagar ${total}`}
       </button>
     </form>
+  );
+}
+
+function SavedCardPicker({
+  methods,
+  selectedId,
+  onSelect,
+}: {
+  methods: PaymentMethod[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+        Método de pago
+      </p>
+      <div className="mt-2.5 flex flex-col gap-2">
+        {methods.map((method) => (
+          <label
+            key={method.id}
+            className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition-colors ${
+              selectedId === method.id ? "border-ink" : "border-sand hover:border-ink"
+            }`}
+          >
+            <input
+              type="radio"
+              name="paymentMethod"
+              checked={selectedId === method.id}
+              onChange={() => onSelect(method.id)}
+              className="accent-ink"
+            />
+            <span className="text-ink">
+              {cardBrandLabel(method.brand)} •••• {method.last4}
+            </span>
+            <span className="ml-auto text-xs text-ink-muted">
+              exp. {String(method.expMonth).padStart(2, "0")}/{method.expYear}
+            </span>
+          </label>
+        ))}
+        <label
+          className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition-colors ${
+            selectedId === "new" ? "border-ink" : "border-sand hover:border-ink"
+          }`}
+        >
+          <input
+            type="radio"
+            name="paymentMethod"
+            checked={selectedId === "new"}
+            onChange={() => onSelect("new")}
+            className="accent-ink"
+          />
+          <span className="text-ink">Usar otra tarjeta</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmingPayment() {
+  return (
+    <div className="flex flex-col items-center gap-4 py-16 text-center">
+      <Spinner className="h-9 w-9 border-sand border-t-ink" />
+      <div>
+        <p className="text-sm font-medium text-ink">Confirmando tu pago…</p>
+        <p className="mt-1 text-xs text-ink-muted">No cierres ni recargues esta página.</p>
+      </div>
+    </div>
+  );
+}
+
+function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block shrink-0 animate-spin rounded-full border-2 ${className}`}
+      aria-hidden="true"
+    />
   );
 }
 
