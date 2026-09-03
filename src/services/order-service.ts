@@ -20,6 +20,13 @@ export interface OrderService {
   createOrder(payload: CreateOrderPayload): Promise<CreateOrderResult>;
   getMyOrders(): Promise<Order[]>;
   getMyOrder(id: string): Promise<Order>;
+  /**
+   * Guest order lookup by order number + email — the pair a guest actually
+   * has, since order numbers alone are sequential/guessable (CM-001000,
+   * CM-001001, ...). Backend route not shipped yet (see the API's list of
+   * checkout gaps) — this is wired up ready for whenever it lands.
+   */
+  trackGuestOrder(orderNumber: string, email: string): Promise<Order>;
 }
 
 export class RestOrderService implements OrderService {
@@ -42,6 +49,11 @@ export class RestOrderService implements OrderService {
     return apiFetch<Order>(`/me/orders/${encodeURIComponent(id)}`, {
       auth: true,
     });
+  }
+
+  async trackGuestOrder(orderNumber: string, email: string): Promise<Order> {
+    const params = new URLSearchParams({ orderNumber, email });
+    return apiFetch<Order>(`/store/orders/track?${params.toString()}`);
   }
 }
 

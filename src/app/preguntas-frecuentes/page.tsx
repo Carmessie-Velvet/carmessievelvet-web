@@ -2,18 +2,26 @@ import Link from "next/link";
 import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 import { Accordion } from "@/components/ui/Accordion";
 
-// Placeholder copy — pendiente de confirmar respuestas reales con la clienta.
 const faqs = [
   {
     question: "¿Cuánto tarda mi pedido en llegar?",
-    answer: "Hacemos envíos a todo México. El tiempo estimado de entrega es de 3 a 7 días hábiles una vez confirmado el pago.",
+    answer: (
+      <>
+        Nuestras piezas son de tiraje corto — el tiempo de elaboración es de 3 a 4 semanas antes
+        de que tu pedido salga a envío. Una vez que sale, tienes dos opciones:
+        <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+          <li>Envío express (Estafeta): $150, 2 a 5 días hábiles.</li>
+          <li>Envío estándar (Correos de México): $75, 8 a 20 días hábiles.</li>
+        </ul>
+      </>
+    ),
   },
   {
     question: "¿Puedo cambiar o devolver una prenda?",
     answer: (
       <>
-        Sí, tienes 15 días naturales desde la entrega para solicitar un cambio sin costo. Revisa
-        las condiciones completas en{" "}
+        Sí, tienes 15 días naturales desde que recibes tu pedido para solicitar un cambio o
+        reembolso. Revisa las condiciones completas en{" "}
         <Link href="/devoluciones" className="text-ink underline underline-offset-2 hover:text-velvet">
           Devoluciones
         </Link>
@@ -27,7 +35,7 @@ const faqs = [
   },
   {
     question: "¿Cómo sé qué talla pedir?",
-    answer: "Cada producto incluye las tallas disponibles (XS, S, M, L). Si tienes dudas sobre cuál te queda mejor, escríbenos antes de comprar.",
+    answer: "Cada producto incluye las tallas disponibles (XS, S, M, L) y un enlace a nuestra guía de tallas con las medidas exactas por prenda — corset y bustier, faldas y pantalones.",
   },
   {
     question: "¿Puedo rastrear mi pedido?",
@@ -36,14 +44,22 @@ const faqs = [
         Sí — si tienes cuenta, entra a{" "}
         <Link href="/cuenta/pedidos" className="text-ink underline underline-offset-2 hover:text-velvet">
           Mi cuenta &gt; Pedidos
+        </Link>
+        . Si compraste como invitada,{" "}
+        <Link href="/rastrear-pedido" className="text-ink underline underline-offset-2 hover:text-velvet">
+          rastrea tu pedido aquí
         </Link>{" "}
-        para ver el estado de tu compra.
+        con tu número de pedido y correo.
       </>
     ),
   },
   {
     question: "¿Hacen envíos internacionales?",
     answer: "Por ahora solo enviamos dentro de México. Estamos evaluando envíos internacionales a futuro.",
+  },
+  {
+    question: "¿Cuánto tardan en responder mis mensajes?",
+    answer: "Respondemos en un plazo de 24 a 48 horas.",
   },
 ];
 

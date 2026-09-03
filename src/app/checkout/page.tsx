@@ -23,8 +23,10 @@ import { formatCurrency } from "@/lib/format-currency";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
+import { lookupPostalCode } from "@/lib/lookup-postal-code";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
 import type { PaymentMethod } from "@/types/user";
@@ -37,6 +39,32 @@ const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   USAGE_LIMIT_REACHED: "Este cupón alcanzó su límite de usos.",
   BELOW_MINIMUM_AMOUNT: "Tu compra no alcanza el mínimo para aplicar este cupón.",
 };
+
+// Prices/ETAs confirmed by the client (2026-09-03) — Estafeta ~80% of the
+// time, Correos de México the rest, depending on which guía comes out
+// cheaper for a given shipment. Shown here so the shopper sees the real
+// cost before paying, but NOT sent to `createOrder` yet: the backend's
+// `CreateOrderDto` doesn't accept a shipping method and always prices
+// shipping at $0 (`shippingMinor = 0` in `OrderService.create`) — sending
+// an extra field would just 400 under `forbidNonWhitelisted`. Once the
+// backend adds a `shippingMethod` field (see the request already sent),
+// wire `shippingMethod` into the `createOrder` call below.
+const SHIPPING_OPTIONS = [
+  {
+    id: "standard" as const,
+    label: "Envío estándar",
+    carrier: "Correos de México",
+    eta: "8 a 20 días hábiles",
+    price: 75,
+  },
+  {
+    id: "express" as const,
+    label: "Envío express",
+    carrier: "Estafeta",
+    eta: "2 a 5 días hábiles",
+    price: 150,
+  },
+];
 
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: "",
@@ -88,7 +116,7 @@ const STRIPE_APPEARANCE: Appearance = {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, removeItem, setQuantity } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { open: openAuthModal } = useAuthModal();
 
@@ -102,6 +130,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
   const [savedMethods, setSavedMethods] = useState<PaymentMethod[] | null>(null);
+  const [postalCodeNotFound, setPostalCodeNotFound] = useState(false);
+  const [shippingMethod, setShippingMethod] = useState<(typeof SHIPPING_OPTIONS)[number]["id"]>(
+    "standard"
+  );
+  const selectedShipping = SHIPPING_OPTIONS.find((option) => option.id === shippingMethod)!;
 
   // Fetched once here (not re-fetched in the payment step) so the "guardar
   // tarjeta" checkbox below can hide itself for a shopper who already has a
@@ -146,6 +179,35 @@ export default function CheckoutPage() {
       cancelled = true;
     };
   }, [isAuthenticated]);
+
+  // Autofills city/state from the postal code once it's a complete 5-digit
+  // CP, so a typo there gets caught by "that doesn't look like a real
+  // Mexican postal code" instead of silently reaching the courier. Never
+  // overwrites a city/state the shopper already typed themselves.
+  useEffect(() => {
+    const postalCode = address.postalCode;
+    if (!/^\d{5}$/.test(postalCode)) {
+      setPostalCodeNotFound(false);
+      return;
+    }
+    let cancelled = false;
+    lookupPostalCode(postalCode).then((result) => {
+      if (cancelled) return;
+      if (!result) {
+        setPostalCodeNotFound(true);
+        return;
+      }
+      setPostalCodeNotFound(false);
+      setAddress((prev) =>
+        prev.postalCode === postalCode
+          ? { ...prev, city: prev.city || result.city, state: prev.state || result.state }
+          : prev
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [address.postalCode]);
 
   if (items.length === 0 && !order) {
     return (
@@ -320,9 +382,51 @@ export default function CheckoutPage() {
                 id="postalCode"
                 label="Código postal"
                 required
+                inputMode="numeric"
+                pattern="\d{5}"
+                maxLength={5}
                 value={address.postalCode}
-                onChange={(e) => updateAddress("postalCode", e.target.value)}
+                onChange={(e) =>
+                  updateAddress("postalCode", e.target.value.replace(/\D/g, "").slice(0, 5))
+                }
               />
+              {postalCodeNotFound && (
+                <p className="-mt-2 text-xs text-ink-muted">
+                  No encontramos ese código postal — verifica que sea correcto.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section>
+            <SectionTitle step={3} label="Método de envío" />
+            <div className="flex flex-col gap-3">
+              {SHIPPING_OPTIONS.map((option) => (
+                <label
+                  key={option.id}
+                  className={`flex cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
+                    shippingMethod === option.id
+                      ? "border-ink bg-cream-soft"
+                      : "border-sand hover:border-ink"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="shippingMethod"
+                      checked={shippingMethod === option.id}
+                      onChange={() => setShippingMethod(option.id)}
+                    />
+                    <div>
+                      <p className="text-sm text-ink">{option.label}</p>
+                      <p className="text-xs text-ink-muted">
+                        {option.carrier} · {option.eta}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-ink">{formatCurrency(option.price)}</p>
+                </label>
+              ))}
             </div>
           </section>
 
@@ -348,10 +452,15 @@ export default function CheckoutPage() {
           className="lg:sticky lg:top-24 lg:order-2"
           lines={items.map((item) => ({
             key: `${item.product.id}-${item.size}`,
+            href: `/producto/${item.product.slug}`,
             image: item.product.images[0],
             name: item.product.name,
-            meta: `Talla ${item.size} · Cant. ${item.quantity}`,
+            meta: `Talla ${item.size}`,
             amount: formatCurrency(item.product.price * item.quantity),
+            quantity: item.quantity,
+            onQuantityChange: (quantity: number) =>
+              setQuantity(item.product.id, item.size, quantity),
+            onRemove: () => removeItem(item.product.id, item.size),
           }))}
           couponSlot={
             <CouponField
@@ -365,7 +474,18 @@ export default function CheckoutPage() {
               preview={couponPreview}
             />
           }
-          rows={[{ label: "Subtotal", value: formatCurrency(subtotal) }]}
+          rows={[
+            { label: "Subtotal", value: formatCurrency(subtotal) },
+            {
+              label: `Envío (${selectedShipping.carrier})`,
+              value: formatCurrency(selectedShipping.price),
+            },
+            {
+              label: "Total estimado",
+              value: formatCurrency(subtotal + selectedShipping.price),
+              strong: true,
+            },
+          ]}
           note="El total final (con descuentos o cupón aplicado) se calcula en el siguiente paso."
         />
       </div>
@@ -391,7 +511,17 @@ function OrderSummary({
   className = "",
   couponSlot,
 }: {
-  lines: { key: string; image: { src: string; alt: string }; name: string; meta: string; amount: string }[];
+  lines: {
+    key: string;
+    href?: string;
+    image: { src: string; alt: string };
+    name: string;
+    meta: string;
+    amount: string;
+    quantity?: number;
+    onQuantityChange?: (quantity: number) => void;
+    onRemove?: () => void;
+  }[];
   rows: { label: string; value: string; strong?: boolean }[];
   note?: string;
   className?: string;
@@ -405,15 +535,67 @@ function OrderSummary({
       <ul className="mt-3 flex flex-col divide-y divide-sand">
         {lines.map((line) => (
           <li key={line.key} className="flex gap-3 py-3 first:pt-0">
-            <div className="relative h-16 w-13 shrink-0 overflow-hidden bg-sand">
-              <Image src={line.image.src} alt={line.image.alt} fill sizes="52px" className="object-cover" />
-            </div>
-            <div className="flex flex-1 items-center justify-between">
-              <div>
-                <p className="text-sm text-ink">{line.name}</p>
-                <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
+            {line.href ? (
+              <Link
+                href={line.href}
+                className="relative h-24 w-20 shrink-0 overflow-hidden bg-sand"
+              >
+                <Image src={line.image.src} alt={line.image.alt} fill sizes="80px" className="object-cover" />
+              </Link>
+            ) : (
+              <div className="relative h-24 w-20 shrink-0 overflow-hidden bg-sand">
+                <Image src={line.image.src} alt={line.image.alt} fill sizes="80px" className="object-cover" />
               </div>
-              <p className="text-sm font-medium text-ink">{line.amount}</p>
+            )}
+            <div className="flex flex-1 justify-between gap-2">
+              <div className="flex flex-col justify-between">
+                <div>
+                  {line.href ? (
+                    <Link href={line.href} className="text-sm text-ink hover:text-velvet">
+                      {line.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-ink">{line.name}</p>
+                  )}
+                  <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
+                </div>
+                {line.onQuantityChange && line.quantity !== undefined && (
+                  <div className="flex items-center border border-sand">
+                    <button
+                      type="button"
+                      aria-label="Disminuir cantidad"
+                      onClick={() => line.onQuantityChange!(line.quantity! - 1)}
+                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center text-xs">{line.quantity}</span>
+                    <button
+                      type="button"
+                      aria-label="Aumentar cantidad"
+                      onClick={() => line.onQuantityChange!(line.quantity! + 1)}
+                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col items-end justify-between">
+                {line.onRemove ? (
+                  <button
+                    type="button"
+                    onClick={line.onRemove}
+                    aria-label="Quitar del pedido"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center text-ink-muted transition-colors hover:text-velvet"
+                  >
+                    <RemoveIcon />
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <p className="shrink-0 text-sm font-medium text-ink">{line.amount}</p>
+              </div>
             </div>
           </li>
         ))}
@@ -541,6 +723,7 @@ function PaymentStep({
           className="lg:sticky lg:top-24 lg:order-2"
           lines={order.items.map((item) => ({
             key: item.id,
+            href: `/producto/${item.productSku.toLowerCase()}`,
             image: { src: item.productImage, alt: item.productName },
             name: item.productName,
             meta: `Talla ${item.size} · Cant. ${item.quantity}`,
@@ -743,20 +926,19 @@ function ConfirmingPayment() {
   );
 }
 
-function Spinner({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <span
-      className={`inline-block shrink-0 animate-spin rounded-full border-2 ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
-
 function LockIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
       <rect x="4" y="10" width="16" height="10" rx="1" />
       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
