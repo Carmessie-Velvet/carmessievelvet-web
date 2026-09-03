@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
+import { isSoldOut } from "@/lib/product-stock";
 
 export function AddToCartForm({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
@@ -29,10 +30,12 @@ export function AddToCartForm({ product }: { product: Product }) {
             onClick={() => setSelectedSize(variant.size)}
             aria-pressed={selectedSize === variant.size}
             className={`flex h-11 w-11 items-center justify-center border text-xs font-medium uppercase tracking-wide transition-colors ${
-              selectedSize === variant.size
-                ? "border-ink bg-ink text-cream-soft"
-                : "border-sand text-ink hover:border-ink"
-            } ${!variant.inStock ? "cursor-not-allowed border-sand text-ink-muted/40 line-through" : ""}`}
+              !variant.inStock
+                ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
+                : selectedSize === variant.size
+                  ? "border-ink bg-ink text-cream-soft"
+                  : "border-sand text-ink hover:border-ink"
+            }`}
           >
             {variant.size}
           </button>
@@ -46,7 +49,7 @@ export function AddToCartForm({ product }: { product: Product }) {
           disabled={!selectedSize}
           className="w-full"
         >
-          {selectedSize ? "Agregar al carrito" : "Elige una talla"}
+          {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
         </Button>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { useQuickAdd } from "@/context/quick-add-context";
 import { useCart } from "@/context/cart-context";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import { formatCurrency } from "@/lib/format-currency";
+import { isSoldOut } from "@/lib/product-stock";
 import type { Size } from "@/types/product";
 
 export function QuickAddModal() {
@@ -100,10 +101,12 @@ export function QuickAddModal() {
                     onClick={() => setSelectedSize(variant.size)}
                     aria-pressed={selectedSize === variant.size}
                     className={`h-10 border text-xs font-medium uppercase tracking-wide transition-colors ${
-                      selectedSize === variant.size
-                        ? "border-ink bg-ink text-cream-soft"
-                        : "border-sand text-ink hover:border-ink"
-                    } ${!variant.inStock ? "cursor-not-allowed border-sand text-ink-muted/40 line-through" : ""}`}
+                      !variant.inStock
+                        ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
+                        : selectedSize === variant.size
+                          ? "border-ink bg-ink text-cream-soft"
+                          : "border-sand text-ink hover:border-ink"
+                    }`}
                   >
                     {variant.size}
                   </button>
@@ -116,7 +119,7 @@ export function QuickAddModal() {
                 disabled={!selectedSize}
                 className="mt-6 flex w-full items-center justify-center gap-2 bg-ink px-6 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-cream-soft transition-colors duration-200 hover:bg-velvet disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {selectedSize ? "Agregar al carrito" : "Elige una talla"}
+                {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
               </button>
             </div>
           </motion.div>

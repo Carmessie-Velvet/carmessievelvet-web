@@ -10,6 +10,7 @@ import { useQuickAdd } from "@/context/quick-add-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/context/auth-context";
 import { HeartIcon } from "@/components/icons/HeartIcon";
+import { isSoldOut } from "@/lib/product-stock";
 
 export function ProductCard({ product }: { product: Product }) {
   const [primary, secondary] = product.images;
@@ -18,6 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { isWishlisted, toggle } = useWishlist();
   const router = useRouter();
   const wishlisted = isWishlisted(product.id);
+  const soldOut = isSoldOut(product);
 
   function handleToggleWishlist(e: React.MouseEvent) {
     e.preventDefault();
@@ -75,10 +77,16 @@ export function ProductCard({ product }: { product: Product }) {
             />
           )}
         </motion.div>
-        {product.isNew && (
-          <span className="absolute left-3 top-3 bg-velvet px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
-            Nuevo
+        {soldOut ? (
+          <span className="absolute left-3 top-3 bg-ink/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
+            Agotado
           </span>
+        ) : (
+          product.isNew && (
+            <span className="absolute left-3 top-3 bg-velvet px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
+              Nuevo
+            </span>
+          )
         )}
         <div className="group/quickadd absolute bottom-2.5 right-2.5 z-10 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <button
