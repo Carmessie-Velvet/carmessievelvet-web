@@ -80,6 +80,7 @@ export interface ApiStoreProduct {
   images: string[];
   availableSizes: Size[];
   inStock: boolean;
+  madeToOrder: boolean;
 }
 
 interface ApiPaginated<T> {
@@ -119,6 +120,9 @@ export function mapProduct(api: ApiStoreProduct, isNew = false): Product {
       inStock: api.availableSizes.includes(size),
     })),
     isNew,
+    // Defensive `?? false` for the same reason `category` is optional above:
+    // POST /me/wishlist's embedded product isn't a faithful StoreProductDto.
+    madeToOrder: api.madeToOrder ?? false,
   };
 }
 

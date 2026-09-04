@@ -4,6 +4,7 @@ import { categories } from "@/mocks/categories";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
 
 const helpLinks = [
+  { href: "/rastrear-pedido", label: "Rastrear mi pedido" },
   { href: "/contacto", label: "Contáctanos" },
   { href: "/preguntas-frecuentes", label: "Preguntas frecuentes" },
   { href: "/devoluciones", label: "Devoluciones" },

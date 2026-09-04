@@ -28,6 +28,14 @@ export default function ConfirmacionPage({
       <Link href="/tienda" className={`${buttonClasses("solid")} mt-8`}>
         Seguir comprando
       </Link>
+      {order && (
+        <Link
+          href={`/rastrear-pedido?pedido=${encodeURIComponent(order)}`}
+          className="mt-4 text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+        >
+          Consulta tu pedido más tarde aquí
+        </Link>
+      )}
     </div>
   );
 }

@@ -5,9 +5,11 @@ import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
 import { isSoldOut } from "@/lib/product-stock";
+import { SizeGuideModal } from "@/components/product/SizeGuideModal";
 
 export function AddToCartForm({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
 
   function handleAdd() {
@@ -18,9 +20,18 @@ export function AddToCartForm({ product }: { product: Product }) {
 
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
-        Talla
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+          Talla
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowSizeGuide(true)}
+          className="text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+        >
+          Guía de tallas
+        </button>
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {product.variants.map((variant) => (
           <button
@@ -42,6 +53,12 @@ export function AddToCartForm({ product }: { product: Product }) {
         ))}
       </div>
 
+      {product.madeToOrder && !isSoldOut(product) && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Hecho sobre pedido · tiempo de elaboración de 3 a 4 semanas.
+        </p>
+      )}
+
       <div className="mt-6">
         <Button
           type="button"
@@ -52,6 +69,8 @@ export function AddToCartForm({ product }: { product: Product }) {
           {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
         </Button>
       </div>
+
+      <SizeGuideModal isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />
     </div>
   );
 }

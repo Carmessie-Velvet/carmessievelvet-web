@@ -16,6 +16,7 @@ import { useCart } from "@/context/cart-context";
 import { useAuth } from "@/context/auth-context";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { orderService } from "@/services/order-service";
+import { shippingService } from "@/services/shipping-service";
 import { productService } from "@/services/product-service";
 import { userService } from "@/services/user-service";
 import { getErrorMessage } from "@/lib/get-error-message";
@@ -23,9 +24,12 @@ import { formatCurrency } from "@/lib/format-currency";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
+import { lookupPostalCode } from "@/lib/lookup-postal-code";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
+import type { ShippingMethod } from "@/types/shipping";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
 import type { PaymentMethod } from "@/types/user";
 
@@ -37,6 +41,15 @@ const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   USAGE_LIMIT_REACHED: "Este cupón alcanzó su límite de usos.",
   BELOW_MINIMUM_AMOUNT: "Tu compra no alcanza el mínimo para aplicar este cupón.",
 };
+
+// Codes come from an admin-editable catalog, so there's no fixed set to map
+// to hand-written labels — just make whatever code exists readable
+// ("STANDARD" → "Standard", "PICKUP_CDMX" → "Pickup cdmx"). The human-
+// readable detail lives in the method's own `description`.
+function shippingMethodLabel(method: ShippingMethod): string {
+  const words = method.code.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: "",
@@ -88,7 +101,7 @@ const STRIPE_APPEARANCE: Appearance = {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, removeItem, setQuantity } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { open: openAuthModal } = useAuthModal();
 
@@ -102,6 +115,35 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
   const [savedMethods, setSavedMethods] = useState<PaymentMethod[] | null>(null);
+  const [postalCodeNotFound, setPostalCodeNotFound] = useState(false);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[] | null>(null);
+  const [shippingMethodsError, setShippingMethodsError] = useState(false);
+  const [shippingMethodCode, setShippingMethodCode] = useState<string | null>(null);
+  const selectedShipping =
+    shippingMethods?.find((method) => method.code === shippingMethodCode) ?? null;
+
+  // The shipping catalog is admin-editable and priced server-side, so it has
+  // to come from the API on every visit — there's no safe local copy to fall
+  // back to, and `POST /orders` 400s without a valid code from this list.
+  useEffect(() => {
+    let cancelled = false;
+    shippingService
+      .getMethods()
+      .then((methods) => {
+        if (cancelled) return;
+        setShippingMethods(methods);
+        // Cheapest first, matching the previous default of preselecting
+        // standard shipping.
+        const cheapest = [...methods].sort((a, b) => a.price - b.price)[0];
+        setShippingMethodCode(cheapest ? cheapest.code : null);
+      })
+      .catch(() => {
+        if (!cancelled) setShippingMethodsError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetched once here (not re-fetched in the payment step) so the "guardar
   // tarjeta" checkbox below can hide itself for a shopper who already has a
@@ -147,6 +189,35 @@ export default function CheckoutPage() {
     };
   }, [isAuthenticated]);
 
+  // Autofills city/state from the postal code once it's a complete 5-digit
+  // CP, so a typo there gets caught by "that doesn't look like a real
+  // Mexican postal code" instead of silently reaching the courier. Never
+  // overwrites a city/state the shopper already typed themselves.
+  useEffect(() => {
+    const postalCode = address.postalCode;
+    if (!/^\d{5}$/.test(postalCode)) {
+      setPostalCodeNotFound(false);
+      return;
+    }
+    let cancelled = false;
+    lookupPostalCode(postalCode).then((result) => {
+      if (cancelled) return;
+      if (!result) {
+        setPostalCodeNotFound(true);
+        return;
+      }
+      setPostalCodeNotFound(false);
+      setAddress((prev) =>
+        prev.postalCode === postalCode
+          ? { ...prev, city: prev.city || result.city, state: prev.state || result.state }
+          : prev
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [address.postalCode]);
+
   if (items.length === 0 && !order) {
     return (
       <div className="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
@@ -166,6 +237,10 @@ export default function CheckoutPage() {
 
   async function handleCreateOrder(event: React.FormEvent) {
     event.preventDefault();
+    if (!selectedShipping) {
+      setError("Elige un método de envío para continuar.");
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -177,12 +252,21 @@ export default function CheckoutPage() {
           quantity: item.quantity,
         })),
         shippingAddress: address,
+        shippingMethod: selectedShipping.code,
         couponCode: couponCode || undefined,
         savePaymentMethod: isAuthenticated ? savePaymentMethod : undefined,
       });
       setOrder(result);
     } catch (err) {
-      setError(getErrorMessage(err, "No se pudo crear el pedido."));
+      // A method retired (or repriced away) between page load and submit is
+      // the only 404 this call can produce ("Shipping method <code> not
+      // found") — the raw English string isn't worth showing a Spanish-
+      // speaking shopper, and the fix is simply to reload the catalog.
+      setError(
+        getErrorMessage(err, "No se pudo crear el pedido.", {
+          404: "El método de envío que elegiste ya no está disponible. Recarga la página para ver las opciones actuales.",
+        })
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -320,10 +404,64 @@ export default function CheckoutPage() {
                 id="postalCode"
                 label="Código postal"
                 required
+                inputMode="numeric"
+                pattern="\d{5}"
+                maxLength={5}
                 value={address.postalCode}
-                onChange={(e) => updateAddress("postalCode", e.target.value)}
+                onChange={(e) =>
+                  updateAddress("postalCode", e.target.value.replace(/\D/g, "").slice(0, 5))
+                }
               />
+              {postalCodeNotFound && (
+                <p className="-mt-2 text-xs text-ink-muted">
+                  No encontramos ese código postal — verifica que sea correcto.
+                </p>
+              )}
             </div>
+          </section>
+
+          <section>
+            <SectionTitle step={3} label="Método de envío" />
+            {shippingMethodsError || shippingMethods?.length === 0 ? (
+              <p className="text-sm text-velvet">
+                No pudimos cargar los métodos de envío. Recarga la página para
+                intentar de nuevo.
+              </p>
+            ) : !shippingMethods ? (
+              <p className="text-sm text-ink-muted">Cargando opciones de envío…</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {shippingMethods.map((method) => (
+                  <label
+                    key={method.code}
+                    className={`flex cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
+                      shippingMethodCode === method.code
+                        ? "border-ink bg-cream-soft"
+                        : "border-sand hover:border-ink"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value={method.code}
+                        checked={shippingMethodCode === method.code}
+                        onChange={() => setShippingMethodCode(method.code)}
+                      />
+                      <div>
+                        <p className="text-sm text-ink">{shippingMethodLabel(method)}</p>
+                        <p className="text-xs text-ink-muted">
+                          {method.description ?? method.code}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-ink">
+                      {formatCurrency(method.price)}
+                    </p>
+                  </label>
+                ))}
+              </div>
+            )}
           </section>
 
           {isAuthenticated && savedMethods && savedMethods.length === 0 && (
@@ -339,7 +477,11 @@ export default function CheckoutPage() {
 
           {error && <p className="text-sm text-velvet">{error}</p>}
 
-          <button type="submit" disabled={isSubmitting} className={buttonClasses("solid")}>
+          <button
+            type="submit"
+            disabled={isSubmitting || !selectedShipping}
+            className={buttonClasses("solid")}
+          >
             {isSubmitting ? "Procesando…" : "Continuar al pago"}
           </button>
         </form>
@@ -348,10 +490,15 @@ export default function CheckoutPage() {
           className="lg:sticky lg:top-24 lg:order-2"
           lines={items.map((item) => ({
             key: `${item.product.id}-${item.size}`,
+            href: `/producto/${item.product.slug}`,
             image: item.product.images[0],
             name: item.product.name,
-            meta: `Talla ${item.size} · Cant. ${item.quantity}`,
+            meta: `Talla ${item.size}`,
             amount: formatCurrency(item.product.price * item.quantity),
+            quantity: item.quantity,
+            onQuantityChange: (quantity: number) =>
+              setQuantity(item.product.id, item.size, quantity),
+            onRemove: () => removeItem(item.product.id, item.size),
           }))}
           couponSlot={
             <CouponField
@@ -365,7 +512,20 @@ export default function CheckoutPage() {
               preview={couponPreview}
             />
           }
-          rows={[{ label: "Subtotal", value: formatCurrency(subtotal) }]}
+          rows={[
+            { label: "Subtotal", value: formatCurrency(subtotal) },
+            {
+              label: selectedShipping
+                ? `Envío (${shippingMethodLabel(selectedShipping)})`
+                : "Envío",
+              value: selectedShipping ? formatCurrency(selectedShipping.price) : "—",
+            },
+            {
+              label: "Total estimado",
+              value: formatCurrency(subtotal + (selectedShipping?.price ?? 0)),
+              strong: true,
+            },
+          ]}
           note="El total final (con descuentos o cupón aplicado) se calcula en el siguiente paso."
         />
       </div>
@@ -391,7 +551,17 @@ function OrderSummary({
   className = "",
   couponSlot,
 }: {
-  lines: { key: string; image: { src: string; alt: string }; name: string; meta: string; amount: string }[];
+  lines: {
+    key: string;
+    href?: string;
+    image: { src: string; alt: string };
+    name: string;
+    meta: string;
+    amount: string;
+    quantity?: number;
+    onQuantityChange?: (quantity: number) => void;
+    onRemove?: () => void;
+  }[];
   rows: { label: string; value: string; strong?: boolean }[];
   note?: string;
   className?: string;
@@ -405,15 +575,67 @@ function OrderSummary({
       <ul className="mt-3 flex flex-col divide-y divide-sand">
         {lines.map((line) => (
           <li key={line.key} className="flex gap-3 py-3 first:pt-0">
-            <div className="relative h-16 w-13 shrink-0 overflow-hidden bg-sand">
-              <Image src={line.image.src} alt={line.image.alt} fill sizes="52px" className="object-cover" />
-            </div>
-            <div className="flex flex-1 items-center justify-between">
-              <div>
-                <p className="text-sm text-ink">{line.name}</p>
-                <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
+            {line.href ? (
+              <Link
+                href={line.href}
+                className="relative h-24 w-20 shrink-0 overflow-hidden bg-sand"
+              >
+                <Image src={line.image.src} alt={line.image.alt} fill sizes="80px" className="object-cover" />
+              </Link>
+            ) : (
+              <div className="relative h-24 w-20 shrink-0 overflow-hidden bg-sand">
+                <Image src={line.image.src} alt={line.image.alt} fill sizes="80px" className="object-cover" />
               </div>
-              <p className="text-sm font-medium text-ink">{line.amount}</p>
+            )}
+            <div className="flex flex-1 justify-between gap-2">
+              <div className="flex flex-col justify-between">
+                <div>
+                  {line.href ? (
+                    <Link href={line.href} className="text-sm text-ink hover:text-velvet">
+                      {line.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-ink">{line.name}</p>
+                  )}
+                  <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">{line.meta}</p>
+                </div>
+                {line.onQuantityChange && line.quantity !== undefined && (
+                  <div className="flex w-fit items-center self-start border border-sand">
+                    <button
+                      type="button"
+                      aria-label="Disminuir cantidad"
+                      onClick={() => line.onQuantityChange!(line.quantity! - 1)}
+                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center text-xs">{line.quantity}</span>
+                    <button
+                      type="button"
+                      aria-label="Aumentar cantidad"
+                      onClick={() => line.onQuantityChange!(line.quantity! + 1)}
+                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col items-end justify-between">
+                {line.onRemove ? (
+                  <button
+                    type="button"
+                    onClick={line.onRemove}
+                    aria-label="Quitar del pedido"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center text-ink-muted transition-colors hover:text-velvet"
+                  >
+                    <RemoveIcon />
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <p className="shrink-0 text-sm font-medium text-ink">{line.amount}</p>
+              </div>
             </div>
           </li>
         ))}
@@ -541,6 +763,7 @@ function PaymentStep({
           className="lg:sticky lg:top-24 lg:order-2"
           lines={order.items.map((item) => ({
             key: item.id,
+            href: `/producto/${item.productSku.toLowerCase()}`,
             image: { src: item.productImage, alt: item.productName },
             name: item.productName,
             meta: `Talla ${item.size} · Cant. ${item.quantity}`,
@@ -556,6 +779,15 @@ function PaymentStep({
                   },
                 ]
               : []),
+            // Shipping is a real, non-zero amount now that the backend prices
+            // it from the shipping-method catalog — without this row the total
+            // jumps past the subtotal with nothing to explain the difference.
+            {
+              label: order.shippingMethodDescription
+                ? `Envío (${order.shippingMethodDescription})`
+                : "Envío",
+              value: formatCurrency(order.shippingTotal, order.currency.toUpperCase()),
+            },
             { label: "Total", value: formatCurrency(order.total, order.currency.toUpperCase()), strong: true },
           ]}
         />
@@ -613,7 +845,10 @@ function PaymentForm({
           elements: elements!,
           redirect: "if_required",
           confirmParams: {
-            return_url: `${window.location.origin}/checkout/retorno`,
+            // The backend hands us the canonical return URL, but it arrives
+            // as "" when its own env var isn't set — Stripe requires a real
+            // one, so fall back to this origin's /checkout/retorno.
+            return_url: order.returnUrl || `${window.location.origin}/checkout/retorno`,
           },
         })
       : await stripe.confirmCardPayment(order.clientSecret, {
@@ -743,20 +978,19 @@ function ConfirmingPayment() {
   );
 }
 
-function Spinner({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <span
-      className={`inline-block shrink-0 animate-spin rounded-full border-2 ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
-
 function LockIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
       <rect x="4" y="10" width="16" height="10" rx="1" />
       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
