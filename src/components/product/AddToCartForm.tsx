@@ -53,6 +53,12 @@ export function AddToCartForm({ product }: { product: Product }) {
         ))}
       </div>
 
+      {product.madeToOrder && !isSoldOut(product) && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Hecho sobre pedido · tiempo de elaboración de 3 a 4 semanas.
+        </p>
+      )}
+
       <div className="mt-6">
         <Button
           type="button"

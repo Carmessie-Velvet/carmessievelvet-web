@@ -16,6 +16,7 @@ import { useCart } from "@/context/cart-context";
 import { useAuth } from "@/context/auth-context";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { orderService } from "@/services/order-service";
+import { shippingService } from "@/services/shipping-service";
 import { productService } from "@/services/product-service";
 import { userService } from "@/services/user-service";
 import { getErrorMessage } from "@/lib/get-error-message";
@@ -28,6 +29,7 @@ import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
+import type { ShippingMethod } from "@/types/shipping";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
 import type { PaymentMethod } from "@/types/user";
 
@@ -40,31 +42,14 @@ const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   BELOW_MINIMUM_AMOUNT: "Tu compra no alcanza el mínimo para aplicar este cupón.",
 };
 
-// Prices/ETAs confirmed by the client (2026-09-03) — Estafeta ~80% of the
-// time, Correos de México the rest, depending on which guía comes out
-// cheaper for a given shipment. Shown here so the shopper sees the real
-// cost before paying, but NOT sent to `createOrder` yet: the backend's
-// `CreateOrderDto` doesn't accept a shipping method and always prices
-// shipping at $0 (`shippingMinor = 0` in `OrderService.create`) — sending
-// an extra field would just 400 under `forbidNonWhitelisted`. Once the
-// backend adds a `shippingMethod` field (see the request already sent),
-// wire `shippingMethod` into the `createOrder` call below.
-const SHIPPING_OPTIONS = [
-  {
-    id: "standard" as const,
-    label: "Envío estándar",
-    carrier: "Correos de México",
-    eta: "8 a 20 días hábiles",
-    price: 75,
-  },
-  {
-    id: "express" as const,
-    label: "Envío express",
-    carrier: "Estafeta",
-    eta: "2 a 5 días hábiles",
-    price: 150,
-  },
-];
+// Codes come from an admin-editable catalog, so there's no fixed set to map
+// to hand-written labels — just make whatever code exists readable
+// ("STANDARD" → "Standard", "PICKUP_CDMX" → "Pickup cdmx"). The human-
+// readable detail lives in the method's own `description`.
+function shippingMethodLabel(method: ShippingMethod): string {
+  const words = method.code.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: "",
@@ -131,10 +116,34 @@ export default function CheckoutPage() {
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
   const [savedMethods, setSavedMethods] = useState<PaymentMethod[] | null>(null);
   const [postalCodeNotFound, setPostalCodeNotFound] = useState(false);
-  const [shippingMethod, setShippingMethod] = useState<(typeof SHIPPING_OPTIONS)[number]["id"]>(
-    "standard"
-  );
-  const selectedShipping = SHIPPING_OPTIONS.find((option) => option.id === shippingMethod)!;
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[] | null>(null);
+  const [shippingMethodsError, setShippingMethodsError] = useState(false);
+  const [shippingMethodCode, setShippingMethodCode] = useState<string | null>(null);
+  const selectedShipping =
+    shippingMethods?.find((method) => method.code === shippingMethodCode) ?? null;
+
+  // The shipping catalog is admin-editable and priced server-side, so it has
+  // to come from the API on every visit — there's no safe local copy to fall
+  // back to, and `POST /orders` 400s without a valid code from this list.
+  useEffect(() => {
+    let cancelled = false;
+    shippingService
+      .getMethods()
+      .then((methods) => {
+        if (cancelled) return;
+        setShippingMethods(methods);
+        // Cheapest first, matching the previous default of preselecting
+        // standard shipping.
+        const cheapest = [...methods].sort((a, b) => a.price - b.price)[0];
+        setShippingMethodCode(cheapest ? cheapest.code : null);
+      })
+      .catch(() => {
+        if (!cancelled) setShippingMethodsError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetched once here (not re-fetched in the payment step) so the "guardar
   // tarjeta" checkbox below can hide itself for a shopper who already has a
@@ -228,6 +237,10 @@ export default function CheckoutPage() {
 
   async function handleCreateOrder(event: React.FormEvent) {
     event.preventDefault();
+    if (!selectedShipping) {
+      setError("Elige un método de envío para continuar.");
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -239,12 +252,21 @@ export default function CheckoutPage() {
           quantity: item.quantity,
         })),
         shippingAddress: address,
+        shippingMethod: selectedShipping.code,
         couponCode: couponCode || undefined,
         savePaymentMethod: isAuthenticated ? savePaymentMethod : undefined,
       });
       setOrder(result);
     } catch (err) {
-      setError(getErrorMessage(err, "No se pudo crear el pedido."));
+      // A method retired (or repriced away) between page load and submit is
+      // the only 404 this call can produce ("Shipping method <code> not
+      // found") — the raw English string isn't worth showing a Spanish-
+      // speaking shopper, and the fix is simply to reload the catalog.
+      setError(
+        getErrorMessage(err, "No se pudo crear el pedido.", {
+          404: "El método de envío que elegiste ya no está disponible. Recarga la página para ver las opciones actuales.",
+        })
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -400,34 +422,46 @@ export default function CheckoutPage() {
 
           <section>
             <SectionTitle step={3} label="Método de envío" />
-            <div className="flex flex-col gap-3">
-              {SHIPPING_OPTIONS.map((option) => (
-                <label
-                  key={option.id}
-                  className={`flex cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
-                    shippingMethod === option.id
-                      ? "border-ink bg-cream-soft"
-                      : "border-sand hover:border-ink"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="shippingMethod"
-                      checked={shippingMethod === option.id}
-                      onChange={() => setShippingMethod(option.id)}
-                    />
-                    <div>
-                      <p className="text-sm text-ink">{option.label}</p>
-                      <p className="text-xs text-ink-muted">
-                        {option.carrier} · {option.eta}
-                      </p>
+            {shippingMethodsError || shippingMethods?.length === 0 ? (
+              <p className="text-sm text-velvet">
+                No pudimos cargar los métodos de envío. Recarga la página para
+                intentar de nuevo.
+              </p>
+            ) : !shippingMethods ? (
+              <p className="text-sm text-ink-muted">Cargando opciones de envío…</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {shippingMethods.map((method) => (
+                  <label
+                    key={method.code}
+                    className={`flex cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
+                      shippingMethodCode === method.code
+                        ? "border-ink bg-cream-soft"
+                        : "border-sand hover:border-ink"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value={method.code}
+                        checked={shippingMethodCode === method.code}
+                        onChange={() => setShippingMethodCode(method.code)}
+                      />
+                      <div>
+                        <p className="text-sm text-ink">{shippingMethodLabel(method)}</p>
+                        <p className="text-xs text-ink-muted">
+                          {method.description ?? method.code}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm font-medium text-ink">{formatCurrency(option.price)}</p>
-                </label>
-              ))}
-            </div>
+                    <p className="text-sm font-medium text-ink">
+                      {formatCurrency(method.price)}
+                    </p>
+                  </label>
+                ))}
+              </div>
+            )}
           </section>
 
           {isAuthenticated && savedMethods && savedMethods.length === 0 && (
@@ -443,7 +477,11 @@ export default function CheckoutPage() {
 
           {error && <p className="text-sm text-velvet">{error}</p>}
 
-          <button type="submit" disabled={isSubmitting} className={buttonClasses("solid")}>
+          <button
+            type="submit"
+            disabled={isSubmitting || !selectedShipping}
+            className={buttonClasses("solid")}
+          >
             {isSubmitting ? "Procesando…" : "Continuar al pago"}
           </button>
         </form>
@@ -477,12 +515,14 @@ export default function CheckoutPage() {
           rows={[
             { label: "Subtotal", value: formatCurrency(subtotal) },
             {
-              label: `Envío (${selectedShipping.carrier})`,
-              value: formatCurrency(selectedShipping.price),
+              label: selectedShipping
+                ? `Envío (${shippingMethodLabel(selectedShipping)})`
+                : "Envío",
+              value: selectedShipping ? formatCurrency(selectedShipping.price) : "—",
             },
             {
               label: "Total estimado",
-              value: formatCurrency(subtotal + selectedShipping.price),
+              value: formatCurrency(subtotal + (selectedShipping?.price ?? 0)),
               strong: true,
             },
           ]}
@@ -739,6 +779,15 @@ function PaymentStep({
                   },
                 ]
               : []),
+            // Shipping is a real, non-zero amount now that the backend prices
+            // it from the shipping-method catalog — without this row the total
+            // jumps past the subtotal with nothing to explain the difference.
+            {
+              label: order.shippingMethodDescription
+                ? `Envío (${order.shippingMethodDescription})`
+                : "Envío",
+              value: formatCurrency(order.shippingTotal, order.currency.toUpperCase()),
+            },
             { label: "Total", value: formatCurrency(order.total, order.currency.toUpperCase()), strong: true },
           ]}
         />
@@ -796,7 +845,10 @@ function PaymentForm({
           elements: elements!,
           redirect: "if_required",
           confirmParams: {
-            return_url: `${window.location.origin}/checkout/retorno`,
+            // The backend hands us the canonical return URL, but it arrives
+            // as "" when its own env var isn't set — Stripe requires a real
+            // one, so fall back to this origin's /checkout/retorno.
+            return_url: order.returnUrl || `${window.location.origin}/checkout/retorno`,
           },
         })
       : await stripe.confirmCardPayment(order.clientSecret, {
