@@ -16,6 +16,7 @@ import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileSection } from "@/components/account/ProfileSection";
+import { AddressesSection } from "@/components/account/AddressesSection";
 import { PaymentMethodsSection } from "@/components/account/PaymentMethodsSection";
 import type { Order } from "@/types/order";
 
@@ -86,6 +87,19 @@ export default function CuentaPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      {/*
+        Every card below is its own grid item, explicitly placed via
+        lg:col-start/lg:row-start — deliberately not nested in two
+        "column" wrapper divs (an earlier version of this page did that).
+        That structure worked for the desktop grid but couldn't produce a
+        different mobile stacking order than the desktop column order,
+        since two cards sharing a wrapper div are stuck adjacent in DOM
+        order on mobile too. Keeping every card a sibling here means DOM
+        order alone drives mobile stacking (Perfil, Pedidos, Direcciones,
+        Tarjetas, Zona de riesgo last), while lg:row-start/col-start still
+        places them into the two-column desktop layout independent of
+        that order.
+      */}
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-8">
         <Reveal immediate className="lg:col-start-1 lg:row-start-1">
           <h1 className="text-2xl font-black uppercase tracking-tight text-ink sm:text-3xl">
@@ -93,44 +107,21 @@ export default function CuentaPage() {
           </h1>
         </Reveal>
 
-        <div className="lg:col-start-1 lg:row-start-2">
-          <Reveal immediate delay={0.1} className="mt-8 border border-sand bg-paper p-6 lg:mt-0">
-            <SectionHeading icon={<UserIcon />} label="Perfil" />
-            <div className="mt-4">
-              <ProfileSection />
-            </div>
-          </Reveal>
-
-          <Reveal immediate delay={0.16} className="mt-6 border border-sand bg-paper p-6">
-            <SectionHeading icon={<CardIcon />} label="Tarjetas guardadas" />
-            <div className="mt-4">
-              <PaymentMethodsSection />
-            </div>
-          </Reveal>
-
-          <Reveal immediate delay={0.22} className="mt-6 border border-velvet/25 bg-velvet/[0.03] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-velvet">
-              Zona de riesgo
-            </p>
-            <p className="mt-2 text-sm text-ink-muted">
-              Eliminar tu cuenta es permanente y no se puede deshacer.
-            </p>
-            {deleteError && <p className="mt-2 text-sm text-velvet">{deleteError}</p>}
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={isDeleting}
-              className="mt-4 text-xs font-medium uppercase tracking-[0.1em] text-velvet underline-offset-2 hover:underline"
-            >
-              {isDeleting ? "Eliminando…" : "Eliminar mi cuenta"}
-            </button>
-          </Reveal>
-        </div>
+        <Reveal
+          immediate
+          delay={0.1}
+          className="mt-8 border border-sand bg-paper p-6 lg:col-start-1 lg:row-start-2 lg:mt-0"
+        >
+          <SectionHeading icon={<UserIcon />} label="Perfil" />
+          <div className="mt-4">
+            <ProfileSection />
+          </div>
+        </Reveal>
 
         <Reveal
           immediate
-          delay={0.08}
-          className="mt-8 border border-sand bg-paper p-6 lg:col-start-2 lg:row-start-2 lg:mt-0"
+          delay={0.13}
+          className="mt-6 border border-sand bg-paper p-6 lg:col-start-2 lg:row-start-2 lg:mt-0"
         >
           <div className="flex items-center justify-between">
             <SectionHeading icon={<ReceiptIcon />} label="Pedidos recientes" />
@@ -174,6 +165,50 @@ export default function CuentaPage() {
             </ul>
           )}
         </Reveal>
+
+        <Reveal
+          immediate
+          delay={0.16}
+          className="mt-6 border border-sand bg-paper p-6 lg:col-start-2 lg:row-start-3 lg:mt-0"
+        >
+          <SectionHeading icon={<PinIcon />} label="Direcciones guardadas" />
+          <div className="mt-4">
+            <AddressesSection />
+          </div>
+        </Reveal>
+
+        <Reveal
+          immediate
+          delay={0.19}
+          className="mt-6 border border-sand bg-paper p-6 lg:col-start-1 lg:row-start-3 lg:mt-0"
+        >
+          <SectionHeading icon={<CardIcon />} label="Tarjetas guardadas" />
+          <div className="mt-4">
+            <PaymentMethodsSection />
+          </div>
+        </Reveal>
+
+        <Reveal
+          immediate
+          delay={0.22}
+          className="mt-6 border border-velvet/25 bg-velvet/[0.03] p-6 lg:col-start-1 lg:row-start-4 lg:mt-0"
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-velvet">
+            Zona de riesgo
+          </p>
+          <p className="mt-2 text-sm text-ink-muted">
+            Eliminar tu cuenta es permanente y no se puede deshacer.
+          </p>
+          {deleteError && <p className="mt-2 text-sm text-velvet">{deleteError}</p>}
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isDeleting}
+            className="mt-4 text-xs font-medium uppercase tracking-[0.1em] text-velvet underline-offset-2 hover:underline"
+          >
+            {isDeleting ? "Eliminando…" : "Eliminar mi cuenta"}
+          </button>
+        </Reveal>
       </div>
 
       <ConfirmDialog
@@ -215,6 +250,15 @@ function CardIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true">
       <rect x="2" y="6" width="20" height="14" rx="2" />
       <path d="M2 10h20" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-3.5 w-3.5" aria-hidden="true">
+      <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21Z" />
+      <circle cx="12" cy="9.5" r="2.25" />
     </svg>
   );
 }

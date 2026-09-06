@@ -9,13 +9,29 @@ export type OrderStatus =
 
 export interface ShippingAddress {
   fullName: string;
-  phone?: string;
-  line1: string;
-  line2?: string;
+  /** Required by the API — needed to generate automated shipping guides. */
+  phone: string;
+  /** Street name only, no number (e.g. "Av. Reforma"). */
+  street: string;
+  extNumber: string;
+  intNumber?: string;
+  /** Colonia. */
+  suburb: string;
   city: string;
-  state: string;
+  /**
+   * Enviatodo's own state code (not SEPOMEX/CFDI — they differ in 7 states),
+   * from `GET /store/mx-states`. This is what the client sends.
+   */
+  stateCode: string;
+  /**
+   * Full state name — response-only, always derived server-side from
+   * `stateCode`. Sending it on a request 400s.
+   */
+  state?: string;
   postalCode: string;
   country?: string;
+  /** Free-text landmark / entre calles. */
+  reference?: string;
 }
 
 export interface OrderItem {
@@ -78,7 +94,15 @@ export interface OrderItemInput {
 export interface CreateOrderPayload {
   guestEmail?: string;
   items: OrderItemInput[];
-  shippingAddress: ShippingAddress;
+  /**
+   * Send exactly one of `shippingAddress` / `shippingAddressId`, never both
+   * or neither (the API 400s otherwise). Guests can only use the inline
+   * form; a logged-in `USER` may instead reuse a saved address by id (see
+   * `AddressService`) — a logged-in shopper sending an inline address gets
+   * it auto-saved to their account server-side, no separate flag needed.
+   */
+  shippingAddress?: ShippingAddress;
+  shippingAddressId?: string;
   /**
    * Required by `POST /orders` — a `code` from the live shipping-methods
    * catalog (never a hardcoded "STANDARD"/"EXPRESS"): the admin can add,

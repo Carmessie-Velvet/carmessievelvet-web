@@ -17,19 +17,23 @@ import { useAuth } from "@/context/auth-context";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { orderService } from "@/services/order-service";
 import { shippingService } from "@/services/shipping-service";
+import { addressService } from "@/services/address-service";
 import { productService } from "@/services/product-service";
 import { userService } from "@/services/user-service";
+import { locationService } from "@/services/location-service";
 import { getErrorMessage } from "@/lib/get-error-message";
+import { ApiError } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/format-currency";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
-import { lookupPostalCode } from "@/lib/lookup-postal-code";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
 import type { ShippingMethod } from "@/types/shipping";
+import type { UserAddress } from "@/types/address";
+import type { MxState } from "@/types/mx-state";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
 import type { PaymentMethod } from "@/types/user";
 
@@ -54,12 +58,15 @@ function shippingMethodLabel(method: ShippingMethod): string {
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: "",
   phone: "",
-  line1: "",
-  line2: "",
+  street: "",
+  extNumber: "",
+  intNumber: "",
+  suburb: "",
   city: "",
-  state: "",
+  stateCode: "",
   postalCode: "",
   country: "MX",
+  reference: "",
 };
 
 // Keeps Stripe's own PaymentElement UI from reading as a foreign, default-
@@ -116,11 +123,18 @@ export default function CheckoutPage() {
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
   const [savedMethods, setSavedMethods] = useState<PaymentMethod[] | null>(null);
   const [postalCodeNotFound, setPostalCodeNotFound] = useState(false);
+  const [mxStates, setMxStates] = useState<MxState[] | null>(null);
+  const [suburbOptions, setSuburbOptions] = useState<string[]>([]);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[] | null>(null);
   const [shippingMethodsError, setShippingMethodsError] = useState(false);
   const [shippingMethodCode, setShippingMethodCode] = useState<string | null>(null);
   const selectedShipping =
     shippingMethods?.find((method) => method.code === shippingMethodCode) ?? null;
+
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[] | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
+  const usingSavedAddress =
+    isAuthenticated && !!savedAddresses && savedAddresses.length > 0 && selectedAddressId !== "new";
 
   // The shipping catalog is admin-editable and priced server-side, so it has
   // to come from the API on every visit — there's no safe local copy to fall
@@ -132,10 +146,13 @@ export default function CheckoutPage() {
       .then((methods) => {
         if (cancelled) return;
         setShippingMethods(methods);
-        // Cheapest first, matching the previous default of preselecting
-        // standard shipping.
-        const cheapest = [...methods].sort((a, b) => a.price - b.price)[0];
-        setShippingMethodCode(cheapest ? cheapest.code : null);
+        // Preselect Express by default (client's preference) — falls back to
+        // the cheapest option if the catalog ever stops having an EXPRESS
+        // code (it's admin-editable, not a fixed enum).
+        const preferred =
+          methods.find((method) => method.code.toUpperCase() === "EXPRESS") ??
+          [...methods].sort((a, b) => a.price - b.price)[0];
+        setShippingMethodCode(preferred ? preferred.code : null);
       })
       .catch(() => {
         if (!cancelled) setShippingMethodsError(true);
@@ -165,6 +182,27 @@ export default function CheckoutPage() {
     };
   }, [isAuthenticated]);
 
+  // Same idea as saved cards: an address picker only makes sense once we
+  // know whether any are saved. `GET /me/addresses` already sorts the
+  // default address first, so preselecting index 0 picks the default.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    addressService
+      .getAll()
+      .then((addresses) => {
+        if (cancelled) return;
+        setSavedAddresses(addresses);
+        if (addresses.length > 0) setSelectedAddressId(addresses[0].id);
+      })
+      .catch(() => {
+        // Best-effort — worst case the shopper just types the address in.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   // Prefills from the shipping address of the user's most recent order, but
   // only while the form is still untouched — an address the shopper already
   // started editing (even to a blank field) should never be clobbered by a
@@ -179,7 +217,30 @@ export default function CheckoutPage() {
         const mostRecent = [...orders].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )[0];
-        setAddress((prev) => (prev === EMPTY_ADDRESS ? mostRecent.shippingAddress : prev));
+        // Built as an explicit allow-list, not a spread of
+        // `mostRecent.shippingAddress` — that response includes `state` (the
+        // full name, derived server-side from `stateCode`), which `POST
+        // /orders` rejects if it's sent back (`forbidNonWhitelisted`).
+        // Nullable columns with no historical backfill (`intNumber`,
+        // `reference`) also come back as JSON `null`, not omitted — coerce to
+        // "" or React warns about a controlled input receiving `null`.
+        setAddress((prev) => {
+          if (prev !== EMPTY_ADDRESS) return prev;
+          const source = mostRecent.shippingAddress;
+          return {
+            fullName: source.fullName,
+            phone: source.phone ?? "",
+            street: source.street,
+            extNumber: source.extNumber,
+            intNumber: source.intNumber ?? "",
+            suburb: source.suburb,
+            city: source.city,
+            stateCode: source.stateCode,
+            postalCode: source.postalCode,
+            country: source.country,
+            reference: source.reference ?? "",
+          };
+        });
       })
       .catch(() => {
         // Best-effort — the shopper just types the address manually if this fails.
@@ -189,27 +250,52 @@ export default function CheckoutPage() {
     };
   }, [isAuthenticated]);
 
-  // Autofills city/state from the postal code once it's a complete 5-digit
-  // CP, so a typo there gets caught by "that doesn't look like a real
-  // Mexican postal code" instead of silently reaching the courier. Never
-  // overwrites a city/state the shopper already typed themselves.
+  // The state-code catalog is Enviatodo's own (not SEPOMEX/CFDI — they
+  // differ in 7 states), so it has to come from the API rather than a
+  // hardcoded list.
+  useEffect(() => {
+    let cancelled = false;
+    locationService
+      .getMxStates()
+      .then((states) => {
+        if (!cancelled) setMxStates(states);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Autofills city/state/colonia from the postal code once it's a complete
+  // 5-digit CP, so a typo there gets caught by "that doesn't look like a
+  // real Mexican postal code" instead of silently reaching the courier.
+  // Never overwrites a field the shopper already typed themselves.
   useEffect(() => {
     const postalCode = address.postalCode;
     if (!/^\d{5}$/.test(postalCode)) {
       setPostalCodeNotFound(false);
+      setSuburbOptions([]);
       return;
     }
     let cancelled = false;
-    lookupPostalCode(postalCode).then((result) => {
+    locationService.lookupPostalCode(postalCode).then((result) => {
       if (cancelled) return;
       if (!result) {
         setPostalCodeNotFound(true);
+        setSuburbOptions([]);
         return;
       }
       setPostalCodeNotFound(false);
+      setSuburbOptions(result.suburbs);
       setAddress((prev) =>
         prev.postalCode === postalCode
-          ? { ...prev, city: prev.city || result.city, state: prev.state || result.state }
+          ? {
+              ...prev,
+              city: prev.city || result.city,
+              stateCode: prev.stateCode || result.stateCode,
+              suburb:
+                prev.suburb || (result.suburbs.length === 1 ? result.suburbs[0] : prev.suburb),
+            }
           : prev
       );
     });
@@ -251,20 +337,28 @@ export default function CheckoutPage() {
           size: item.size,
           quantity: item.quantity,
         })),
-        shippingAddress: address,
+        ...(usingSavedAddress
+          ? { shippingAddressId: selectedAddressId }
+          : { shippingAddress: address }),
         shippingMethod: selectedShipping.code,
         couponCode: couponCode || undefined,
         savePaymentMethod: isAuthenticated ? savePaymentMethod : undefined,
       });
       setOrder(result);
     } catch (err) {
-      // A method retired (or repriced away) between page load and submit is
-      // the only 404 this call can produce ("Shipping method <code> not
-      // found") — the raw English string isn't worth showing a Spanish-
-      // speaking shopper, and the fix is simply to reload the catalog.
+      // Two different 404s can come out of this call — a shipping method
+      // retired/repriced away, or (new) a saved address deleted from another
+      // tab/device between page load and submit. Neither raw English string
+      // is worth showing a Spanish-speaking shopper, and they need different
+      // fixes (reload the catalog vs. pick another address), so tell them
+      // apart by message content rather than lumping both under one status.
+      const isAddressNotFound =
+        err instanceof ApiError && /shipping address/i.test(err.message);
       setError(
         getErrorMessage(err, "No se pudo crear el pedido.", {
-          404: "El método de envío que elegiste ya no está disponible. Recarga la página para ver las opciones actuales.",
+          404: isAddressNotFound
+            ? "Esa dirección ya no está disponible. Elige otra o agrega una nueva."
+            : "El método de envío que elegiste ya no está disponible. Recarga la página para ver las opciones actuales.",
         })
       );
     } finally {
@@ -312,6 +406,7 @@ export default function CheckoutPage() {
               : `/checkout/confirmacion?order=${encodeURIComponent(order.orderNumber)}`
           );
         }}
+        onEditAddress={() => setOrder(null)}
       />
     );
   }
@@ -356,68 +451,157 @@ export default function CheckoutPage() {
 
           <section>
             <SectionTitle step={2} label="Dirección de envío" />
-            <div className="flex flex-col gap-4">
-              <FormField
-                id="fullName"
-                label="Nombre completo"
-                required
-                value={address.fullName}
-                onChange={(e) => updateAddress("fullName", e.target.value)}
+
+            {isAuthenticated && savedAddresses && savedAddresses.length > 0 && (
+              <SavedAddressPicker
+                addresses={savedAddresses}
+                selectedId={selectedAddressId}
+                onSelect={setSelectedAddressId}
               />
-              <FormField
-                id="phone"
-                label="Teléfono"
-                type="tel"
-                value={address.phone}
-                onChange={(e) => updateAddress("phone", e.target.value)}
-              />
-              <FormField
-                id="line1"
-                label="Dirección"
-                required
-                value={address.line1}
-                onChange={(e) => updateAddress("line1", e.target.value)}
-              />
-              <FormField
-                id="line2"
-                label="Depto / referencias (opcional)"
-                value={address.line2}
-                onChange={(e) => updateAddress("line2", e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  id="city"
-                  label="Ciudad"
-                  required
-                  value={address.city}
-                  onChange={(e) => updateAddress("city", e.target.value)}
-                />
-                <FormField
-                  id="state"
-                  label="Estado"
-                  required
-                  value={address.state}
-                  onChange={(e) => updateAddress("state", e.target.value)}
-                />
-              </div>
-              <FormField
-                id="postalCode"
-                label="Código postal"
-                required
-                inputMode="numeric"
-                pattern="\d{5}"
-                maxLength={5}
-                value={address.postalCode}
-                onChange={(e) =>
-                  updateAddress("postalCode", e.target.value.replace(/\D/g, "").slice(0, 5))
+            )}
+
+            {!usingSavedAddress && (
+              <div
+                className={
+                  isAuthenticated && savedAddresses && savedAddresses.length > 0
+                    ? "mt-4 flex flex-col gap-4"
+                    : "flex flex-col gap-4"
                 }
-              />
-              {postalCodeNotFound && (
-                <p className="-mt-2 text-xs text-ink-muted">
-                  No encontramos ese código postal — verifica que sea correcto.
-                </p>
-              )}
-            </div>
+              >
+                <FormField
+                  id="fullName"
+                  label="Nombre completo"
+                  required
+                  value={address.fullName}
+                  onChange={(e) => updateAddress("fullName", e.target.value)}
+                />
+                <FormField
+                  id="phone"
+                  label="Teléfono"
+                  type="tel"
+                  required
+                  value={address.phone}
+                  onChange={(e) => updateAddress("phone", e.target.value)}
+                />
+                <div className="grid grid-cols-[1fr_auto] gap-4">
+                  <FormField
+                    id="street"
+                    label="Calle"
+                    required
+                    value={address.street}
+                    onChange={(e) => updateAddress("street", e.target.value)}
+                  />
+                  <FormField
+                    id="extNumber"
+                    label="Núm. exterior"
+                    required
+                    value={address.extNumber}
+                    onChange={(e) => updateAddress("extNumber", e.target.value)}
+                  />
+                </div>
+                <FormField
+                  id="intNumber"
+                  label="Núm. interior / depto (opcional)"
+                  value={address.intNumber}
+                  onChange={(e) => updateAddress("intNumber", e.target.value)}
+                />
+                <FormField
+                  id="postalCode"
+                  label="Código postal"
+                  required
+                  inputMode="numeric"
+                  pattern="\d{5}"
+                  maxLength={5}
+                  value={address.postalCode}
+                  onChange={(e) =>
+                    updateAddress("postalCode", e.target.value.replace(/\D/g, "").slice(0, 5))
+                  }
+                />
+                {postalCodeNotFound && (
+                  <p className="-mt-2 text-xs text-ink-muted">
+                    No encontramos ese código postal — verifica que sea correcto.
+                  </p>
+                )}
+                {suburbOptions.length > 1 ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor="suburb"
+                      className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted"
+                    >
+                      Colonia
+                    </label>
+                    <select
+                      id="suburb"
+                      required
+                      value={address.suburb}
+                      onChange={(e) => updateAddress("suburb", e.target.value)}
+                      className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+                    >
+                      <option value="" disabled>
+                        Selecciona una colonia
+                      </option>
+                      {suburbOptions.map((suburb) => (
+                        <option key={suburb} value={suburb}>
+                          {suburb}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <FormField
+                    id="suburb"
+                    label="Colonia"
+                    required
+                    value={address.suburb}
+                    onChange={(e) => updateAddress("suburb", e.target.value)}
+                  />
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    id="city"
+                    label="Ciudad"
+                    required
+                    value={address.city}
+                    onChange={(e) => updateAddress("city", e.target.value)}
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      htmlFor="stateCode"
+                      className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted"
+                    >
+                      Estado
+                    </label>
+                    <select
+                      id="stateCode"
+                      required
+                      value={address.stateCode}
+                      onChange={(e) => updateAddress("stateCode", e.target.value)}
+                      className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+                    >
+                      <option value="" disabled>
+                        {mxStates ? "Selecciona un estado" : "Cargando…"}
+                      </option>
+                      {mxStates?.map((state) => (
+                        <option key={state.code} value={state.code}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <FormField
+                  id="reference"
+                  label="Referencia / entre calles (opcional)"
+                  value={address.reference}
+                  onChange={(e) => updateAddress("reference", e.target.value)}
+                />
+                {isAuthenticated && (
+                  <p className="-mt-2 text-xs text-ink-muted">
+                    Esta dirección se guardará en tu cuenta para tu próxima compra.
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           <section>
@@ -550,6 +734,8 @@ function OrderSummary({
   note,
   className = "",
   couponSlot,
+  addressSummary,
+  onEditAddress,
 }: {
   lines: {
     key: string;
@@ -566,6 +752,11 @@ function OrderSummary({
   note?: string;
   className?: string;
   couponSlot?: React.ReactNode;
+  /** One-line shipping-address recap — only passed on the payment step, so a
+   * shopper double-checking their card details can still catch (and fix) a
+   * wrong address without abandoning the order entirely. */
+  addressSummary?: string;
+  onEditAddress?: () => void;
 }) {
   return (
     <div className={`border border-sand bg-cream-soft p-6 ${className}`}>
@@ -640,6 +831,26 @@ function OrderSummary({
           </li>
         ))}
       </ul>
+
+      {addressSummary && (
+        <div className="mt-4 border-t border-sand pt-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Dirección de envío
+            </p>
+            {onEditAddress && (
+              <button
+                type="button"
+                onClick={onEditAddress}
+                className="shrink-0 text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+              >
+                Editar
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-ink">{addressSummary}</p>
+        </div>
+      )}
 
       {couponSlot && <div className="mt-4">{couponSlot}</div>}
 
@@ -722,11 +933,18 @@ function PaymentStep({
   order,
   savedMethods,
   onSuccess,
+  onEditAddress,
 }: {
   order: CreateOrderResult;
   savedMethods: PaymentMethod[] | null;
   onSuccess: () => void;
+  onEditAddress: () => void;
 }) {
+  const address = order.shippingAddress;
+  const addressSummary = `${address.fullName} — ${address.street} ${address.extNumber}${
+    address.intNumber ? `, Int. ${address.intNumber}` : ""
+  }, ${address.suburb}, ${address.city}, ${address.state} ${address.postalCode}`;
+
   const stripePromise = useMemo(
     () => loadStripe(order.publishableKey),
     [order.publishableKey]
@@ -769,6 +987,8 @@ function PaymentStep({
             meta: `Talla ${item.size} · Cant. ${item.quantity}`,
             amount: formatCurrency(item.lineTotal, order.currency.toUpperCase()),
           }))}
+          addressSummary={addressSummary}
+          onEditAddress={onEditAddress}
           rows={[
             { label: "Subtotal", value: formatCurrency(order.subtotal, order.currency.toUpperCase()) },
             ...(order.discountTotal > 0
@@ -907,6 +1127,66 @@ function PaymentForm({
         {isPaying ? "Procesando pago…" : `Pagar ${total}`}
       </button>
     </form>
+  );
+}
+
+function SavedAddressPicker({
+  addresses,
+  selectedId,
+  onSelect,
+}: {
+  addresses: UserAddress[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {addresses.map((addr) => (
+        <label
+          key={addr.id}
+          className={`flex cursor-pointer items-start gap-3 border px-4 py-3 text-sm transition-colors ${
+            selectedId === addr.id ? "border-ink" : "border-sand hover:border-ink"
+          }`}
+        >
+          <input
+            type="radio"
+            name="savedAddress"
+            checked={selectedId === addr.id}
+            onChange={() => onSelect(addr.id)}
+            className="mt-0.5 accent-ink"
+          />
+          <div>
+            <p className="text-ink">
+              {addr.fullName}
+              {addr.isDefault && (
+                <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-velvet">
+                  Predeterminada
+                </span>
+              )}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {addr.street} {addr.extNumber}
+              {addr.intNumber ? `, Int. ${addr.intNumber}` : ""}, {addr.suburb}, {addr.city},{" "}
+              {addr.state} {addr.postalCode}
+            </p>
+          </div>
+        </label>
+      ))}
+      <label
+        className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm transition-colors ${
+          selectedId === "new" ? "border-ink" : "border-sand hover:border-ink"
+        }`}
+      >
+        <input
+          type="radio"
+          name="savedAddress"
+          checked={selectedId === "new"}
+          onChange={() => onSelect("new")}
+          className="accent-ink"
+        />
+        <span className="text-ink">Usar otra dirección</span>
+      </label>
+    </div>
   );
 }
 
