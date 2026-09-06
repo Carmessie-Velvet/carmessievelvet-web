@@ -83,8 +83,9 @@ export function OrderDetailCard({ order }: { order: Order }) {
         </h2>
         <p className="mt-2 text-sm text-ink">{order.shippingAddress.fullName}</p>
         <p className="text-sm text-ink-muted">
-          {order.shippingAddress.line1}
-          {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+          {order.shippingAddress.street} {order.shippingAddress.extNumber}
+          {order.shippingAddress.intNumber ? `, Int. ${order.shippingAddress.intNumber}` : ""}
+          {order.shippingAddress.suburb ? `, ${order.shippingAddress.suburb}` : ""}
         </p>
         <p className="text-sm text-ink-muted">
           {order.shippingAddress.city}, {order.shippingAddress.state}{" "}

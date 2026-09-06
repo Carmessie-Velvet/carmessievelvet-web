@@ -17,13 +17,18 @@ export default function ConfirmacionPage({
         ¡Gracias por tu compra!
       </h1>
       {order && (
-        <p className="mt-3 text-sm text-ink-muted">
-          Tu pedido <span className="text-ink">{order}</span> quedó registrado y tu pago
-          está siendo confirmado.
-        </p>
+        <div className="mt-6 w-full border border-sand bg-paper px-6 py-5">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+            Número de pedido
+          </p>
+          <p className="mt-1 text-2xl font-black tracking-tight text-ink sm:text-3xl">
+            {order}
+          </p>
+        </div>
       )}
-      <p className="mt-2 text-sm text-ink-muted">
-        Guarda tu número de pedido — al no tener cuenta, es la única forma de identificarlo.
+      <p className="mt-4 text-sm text-ink-muted">
+        Tu pago está siendo confirmado. Guarda tu número de pedido — al no tener cuenta, es la
+        única forma de identificarlo.
       </p>
       <Link href="/tienda" className={`${buttonClasses("solid")} mt-8`}>
         Seguir comprando
