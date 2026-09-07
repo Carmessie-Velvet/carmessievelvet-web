@@ -91,6 +91,14 @@ export interface Order {
    * `GET /me/orders/:id`, guest tracking), never on the paginated list.
    */
   returnRequest?: ReturnRequest | null;
+  /**
+   * Total refunded so far, in pesos — `0` until an admin refunds the order
+   * (via `/cancel`, whether or not a return request was ever involved).
+   * Can be less than `total` when `status` is `PARTIALLY_REFUNDED`.
+   */
+  refundedAmount: number;
+  /** Why an admin cancelled/refunded this order — set together with the refund, not before. */
+  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
