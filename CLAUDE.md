@@ -92,6 +92,22 @@ Sección sin título al final de la home (el heading "En movimiento" se quitó a
 - **Catálogo/PDP**: grid de producto simple (nombre + precio), fichas de producto claras; seguir los patrones de `storefront-best-practices` para PDP, carrito y checkout.
 - **Tono general**: minimalista — mucho whitespace, la fotografía de producto es la protagonista, mínima cantidad de elementos de UI por pantalla.
 
+## Despliegue (Vercel + GitHub) — mismo flujo que `carmessievelvet-admin`
+
+- **Ramas**: `develop` es la rama por defecto del repo (`gh repo edit --default-branch develop`) y donde vive el trabajo en curso; `main` es producción. Ambas están protegidas en GitHub (`branches/<rama>/protection`): requieren Pull Request para recibir cambios (`required_pull_request_reviews.required_approving_review_count: 0` — exige PR, no exige aprobación de nadie más), sin force-push ni borrado de rama. **`enforce_admins` está en `false`** (igual que en `carmessievelvet-admin`) — esto bloquea un `git push` directo de un colaborador normal, pero un `owner`/admin del org técnicamente todavía puede empujar directo si lo hace a propósito; la protección es una barrera contra el error accidental, no un candado absoluto. Si en algún momento se quiere que ni el propio owner pueda saltarse el PR, hay que poner `enforce_admins: true` en ambas ramas.
+- **Vercel**: el proyecto está conectado al repo de GitHub. `main` sirve `carmessievelvet.com.mx` (producción); `develop` tiene su propio dominio de staging fijo, **`staging.carmessievelvet.com.mx`**, asignado en Settings → Domains con "Git Branch" = `develop` — distinto de los previews efímeros por PR que Vercel genera automáticamente para cualquier otra rama/PR. Cualquier push a `develop` (vía PR mergeado) se refleja ahí solo, sin tocar producción.
+- **Flujo de trabajo**:
+  1. Todo cambio nuevo sale de una rama `feature/`/`fix/` creada desde `develop`, nunca directo sobre `develop` o `main`.
+  2. Se abre PR hacia `develop`; al mergear, Vercel redeploya el dominio de staging automáticamente.
+  3. Se prueba ahí — no en local, no en el preview efímero del PR — porque el dominio de staging es el que más se parece a producción (mismo build, mismas env vars de Vercel, dominio estable que no cambia entre PRs).
+  4. Solo cuando quedó verificado en staging se abre el PR `develop` → `main`. Antes de abrirlo:
+     - `npx tsc --noEmit`, `npx next lint` y `npm run build` limpios.
+     - Probado en el dominio de staging real (no solo localhost) — incluyendo el flujo específico que cambió, contra el backend real.
+     - Confirmar que el backend de **producción** (`carmessievelvet-api`, ambiente prod — no el de staging del backend, que es independiente de este flujo) ya tiene desplegado lo que esta versión del frontend necesita. Un cambio de contrato (como los breaking changes de direcciones/envío que ya vivimos esta sesión) que llegue a `main` antes de que el backend de producción lo soporte rompe la tienda real.
+     - No dejar commits sueltos sin mergear a ninguna rama — todo lo que se haga debe terminar en un PR (aunque sea a `develop`), nunca quedar solo como historial local o en una rama que nadie va a mergear.
+  5. El PR a `main` se mergea, Vercel redeploya producción.
+- **⚠️ Gotcha del nombre del org en GitHub**: el remoto (`git remote -v`) apunta a `github.com/carmessievelvet/carmessievelvet-web` (minúsculas, sin guion), pero el org real en GitHub es `Carmessie-Velvet` (con guion y mayúsculas) — GitHub redirige la URL vieja, pero `gh pr create`/`gh api` sin `--repo` explícito pueden resolver mal el repo (visto en vivo: un `gh pr create` sin `--repo` mezcló `carmessievelvet` como head y `Carmessie-Velvet` como base y falló). Siempre pasar el repo explícito y con el nombre correcto: `gh api repos/Carmessie-Velvet/carmessievelvet-web/...`, `gh repo edit Carmessie-Velvet/carmessievelvet-web ...`, `gh pr create --repo Carmessie-Velvet/carmessievelvet-web ...` (o simplemente dejar que `gh pr create` sin flags de repo lo infiera desde el branch ya pusheado, que es lo único que se ha visto funcionar consistentemente). Mismo gotcha confirmado en `carmessievelvet-admin`.
+
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript + Tailwind CSS v4, scaffolded con `create-next-app`.

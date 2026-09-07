@@ -1,8 +1,8 @@
 import { apiFetch } from "@/lib/api-client";
 import type { CreateOrderPayload, CreateOrderResult, Order } from "@/types/order";
 
-interface ApiPaginated<T> {
-  items: T[];
+export interface OrderListPage {
+  items: Order[];
   total: number;
   page: number;
   limit: number;
@@ -18,7 +18,15 @@ interface ApiPaginated<T> {
  */
 export interface OrderService {
   createOrder(payload: CreateOrderPayload): Promise<CreateOrderResult>;
+  /**
+   * A handful of the shopper's most recent orders in one shot (up to 100) —
+   * for the couple of spots (checkout's address prefill, the "pedidos
+   * recientes" widget on `/cuenta`) that just need "some recent orders",
+   * not real pagination. `getMyOrdersPage` is the paginated counterpart for
+   * an actual order-history list.
+   */
   getMyOrders(): Promise<Order[]>;
+  getMyOrdersPage(page: number, limit: number): Promise<OrderListPage>;
   getMyOrder(id: string): Promise<Order>;
   /**
    * Guest order lookup by order number + email — the pair a guest actually
@@ -39,10 +47,17 @@ export class RestOrderService implements OrderService {
   }
 
   async getMyOrders(): Promise<Order[]> {
-    const page = await apiFetch<ApiPaginated<Order>>("/me/orders?limit=100", {
+    const page = await apiFetch<OrderListPage>("/me/orders?limit=100", {
       auth: true,
     });
     return page.items;
+  }
+
+  async getMyOrdersPage(page: number, limit: number): Promise<OrderListPage> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return apiFetch<OrderListPage>(`/me/orders?${params.toString()}`, {
+      auth: true,
+    });
   }
 
   async getMyOrder(id: string): Promise<Order> {

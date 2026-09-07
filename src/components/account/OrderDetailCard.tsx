@@ -1,12 +1,23 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { formatCurrency } from "@/lib/format-currency";
+import { OrderStatusStepper } from "./OrderStatusStepper";
+import { OrderReturnRequestSection } from "./OrderReturnRequestSection";
 import type { Order } from "@/types/order";
 
 // Shared between the standalone /cuenta/pedidos/[id] page (mobile, and any
 // direct link) and the desktop master-detail panel on /cuenta/pedidos —
 // same card, two places it gets mounted.
-export function OrderDetailCard({ order }: { order: Order }) {
+export function OrderDetailCard({ order: orderProp }: { order: Order }) {
+  // Local copy so submitting a return request right here can update the
+  // card in place — kept in sync if the parent later passes fresher data
+  // (e.g. a refetch), but otherwise this component owns its own updates.
+  const [order, setOrder] = useState(orderProp);
+  useEffect(() => setOrder(orderProp), [orderProp]);
+
   return (
     <div className="border border-sand bg-paper p-6">
       <div className="flex items-start justify-between gap-4">
@@ -32,6 +43,9 @@ export function OrderDetailCard({ order }: { order: Order }) {
           Número de rastreo: <span className="text-ink">{order.trackingNumber}</span>
         </p>
       )}
+
+      <OrderStatusStepper status={order.status} />
+      <OrderReturnRequestSection order={order} onOrderUpdate={setOrder} />
 
       <ul className="mt-8 flex flex-col divide-y divide-sand border-t border-sand">
         {order.items.map((item) => (

@@ -5,7 +5,8 @@ export type OrderStatus =
   | "SHIPPED"
   | "DELIVERED"
   | "CANCELLED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED";
 
 export interface ShippingAddress {
   fullName: string;
@@ -50,6 +51,21 @@ export interface OrderItem {
   madeToOrder: boolean;
 }
 
+export type ReturnRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type RefundMode = "FULL" | "FULL_MINUS_SHIPPING" | "PARTIAL";
+
+export interface ReturnRequest {
+  id: string;
+  status: ReturnRequestStatus;
+  reason: string;
+  createdAt: string;
+  resolvedAt?: string | null;
+  resolutionNote?: string | null;
+  refundMode?: RefundMode | null;
+  refundedAmount?: number | null;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -69,6 +85,12 @@ export interface Order {
   items: OrderItem[];
   notes?: string;
   trackingNumber?: string;
+  /**
+   * The most recent post-delivery return/refund request, if the buyer ever
+   * submitted one — only present on single-order reads (`GET /orders/:id`,
+   * `GET /me/orders/:id`, guest tracking), never on the paginated list.
+   */
+  returnRequest?: ReturnRequest | null;
   createdAt: string;
   updatedAt: string;
 }
