@@ -1,4 +1,5 @@
 import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
+import { ReturnRequestForm } from "@/components/devoluciones/ReturnRequestForm";
 
 export default function DevolucionesPage() {
   return (
@@ -20,17 +21,12 @@ export default function DevolucionesPage() {
         <h2 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-ink">
           ¿Cómo solicito un cambio o reembolso?
         </h2>
-        <p>
-          Escríbenos a{" "}
-          <a
-            href="mailto:carmessievelvet@gmail.com"
-            className="text-ink underline underline-offset-2 hover:text-velvet"
-          >
-            carmessievelvet@gmail.com
-          </a>{" "}
-          indicando tu número de pedido y el motivo. Te respondemos en un plazo de 24 a 48 horas
-          con los pasos a seguir.
+        <p className="mb-4">
+          Solo aplica una vez que tu pedido fue entregado. Completa el formulario con tu número de
+          pedido, el correo con el que compraste y el motivo — te respondemos en un plazo de 24 a
+          48 horas con los pasos a seguir.
         </p>
+        <ReturnRequestForm />
       </div>
 
       <div>
