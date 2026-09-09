@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { Product, ProductComponent, Size } from "@/types/product";
-import type { CartSelection } from "@/types/cart";
+import { useState } from "react";
+import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
 import { isSoldOut } from "@/lib/product-stock";
+import { useSetSelections } from "@/lib/use-set-selections";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
+import { ComponentSelector } from "@/components/product/ComponentSelector";
 
 export function AddToCartForm({ product }: { product: Product }) {
   if (product.category.type === "SET") {
@@ -83,101 +84,15 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
   );
 }
 
-interface ComponentSelection {
-  size: Size | null;
-  color?: string;
-}
-
-function ComponentSelector({
-  component,
-  selection,
-  onChange,
-}: {
-  component: ProductComponent;
-  selection: ComponentSelection;
-  onChange: (next: ComponentSelection) => void;
-}) {
-  const hasColorChoice = component.colors.length > 1;
-  // A piece with no color of its own comes back as `colors: []` and every
-  // option's `color: null` (not `undefined`) — comparing against `undefined`
-  // there would never match (`null !== undefined`) and silently filter out
-  // every size. Skip the color filter entirely when there's nothing to pick.
-  const activeColor = component.colors.length > 0 ? (selection.color ?? component.colors[0]) : undefined;
-  const sizeOptions =
-    component.colors.length > 0
-      ? component.options.filter((option) => option.color === activeColor)
-      : component.options;
-
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
-        {component.name}
-      </p>
-
-      {hasColorChoice && (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {component.colors.map((color) => (
-            <button
-              key={color}
-              type="button"
-              onClick={() => onChange({ size: null, color })}
-              aria-pressed={activeColor === color}
-              className={`h-9 border px-3 text-xs font-medium uppercase tracking-wide transition-colors ${
-                activeColor === color
-                  ? "border-ink bg-ink text-cream-soft"
-                  : "border-sand text-ink hover:border-ink"
-              }`}
-            >
-              {color}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        {sizeOptions.map((option) => (
-          <button
-            key={option.size}
-            type="button"
-            disabled={!option.available}
-            onClick={() => onChange({ size: option.size, color: activeColor })}
-            aria-pressed={selection.size === option.size}
-            className={`flex h-11 w-11 items-center justify-center border text-xs font-medium uppercase tracking-wide transition-colors ${
-              !option.available
-                ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
-                : selection.size === option.size
-                  ? "border-ink bg-ink text-cream-soft"
-                  : "border-sand text-ink hover:border-ink"
-            }`}
-          >
-            {option.size}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function SetAddToCartForm({ product }: { product: Product }) {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
-  const components = useMemo(
-    () => [...product.components].sort((a, b) => a.position - b.position),
-    [product.components]
-  );
-  const [selections, setSelections] = useState<Record<string, ComponentSelection>>({});
-
-  const complete = components.every((c) => selections[c.id]?.size);
+  const { components, selections, setSelection, complete, buildCartSelections } =
+    useSetSelections(product.components);
 
   function handleAdd() {
     if (!complete) return;
-    const lines: CartSelection[] = components.map((c) => ({
-      componentId: c.id,
-      componentName: c.name,
-      size: selections[c.id]!.size!,
-      color: selections[c.id]!.color,
-    }));
-    addItem(product, { selections: lines });
+    addItem(product, { selections: buildCartSelections() });
     openDrawer();
   }
 
@@ -202,9 +117,7 @@ function SetAddToCartForm({ product }: { product: Product }) {
             key={component.id}
             component={component}
             selection={selections[component.id] ?? { size: null }}
-            onChange={(next) =>
-              setSelections((prev) => ({ ...prev, [component.id]: next }))
-            }
+            onChange={(next) => setSelection(component.id, next)}
           />
         ))}
       </div>

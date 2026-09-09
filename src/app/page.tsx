@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { productService } from "@/services/product-service";
 import { ProductGrid } from "@/components/product/ProductGrid";
-import { VelvetDivider } from "@/components/layout/VelvetDivider";
 import { VideoShowcase } from "@/components/layout/VideoShowcase";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
@@ -52,8 +51,6 @@ export default async function HomePage() {
           </div>
         </Reveal>
       </section>
-
-      <VelvetDivider label="Tiraje corto · Piezas que no se repiten" />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <Reveal>
