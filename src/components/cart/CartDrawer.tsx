@@ -11,6 +11,7 @@ import { buttonClasses } from "@/components/ui/Button";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { HeartIcon } from "@/components/icons/HeartIcon";
 import { CartLineItem } from "./CartLineItem";
+import { cartItemKey } from "@/lib/cart-item-key";
 
 type Tab = "cart" | "wishlist";
 
@@ -88,7 +89,7 @@ export function CartDrawer() {
               <AnimatePresence mode="popLayout" initial={false}>
                 {items.map((item) => (
                   <CartLineItem
-                    key={`${item.product.id}-${item.size}`}
+                    key={cartItemKey(item)}
                     item={item}
                     onNavigate={closeDrawer}
                   />

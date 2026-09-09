@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { productService } from "@/services/product-service";
 import { formatCurrency } from "@/lib/format-currency";
+import { discountPercent } from "@/lib/discount";
 import { AddToCartForm } from "@/components/product/AddToCartForm";
 import { WishlistButton } from "@/components/product/WishlistButton";
+import { DiscountBadge } from "@/components/product/DiscountBadge";
 
 // Catalog data (price, stock) is live in the real API — render on demand
 // with a short cache instead of pre-generating every product at build time.
@@ -29,6 +31,7 @@ export default async function ProductPage({
   const { slug } = await params;
   const product = await productService.getBySlug(slug);
   if (!product) notFound();
+  const discount = discountPercent(product);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -58,13 +61,16 @@ export default async function ProductPage({
           <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">
             {product.name}
           </h1>
+          {discount && <DiscountBadge percent={discount} className="mt-3" />}
           <p className="mt-3 text-sm font-medium uppercase tracking-[0.1em] text-ink-muted">
             {product.compareAtPrice && (
               <span className="mr-2 line-through opacity-60">
                 {formatCurrency(product.compareAtPrice)}
               </span>
             )}
-            {formatCurrency(product.price)}
+            <span className={discount ? "text-base font-bold normal-case tracking-normal text-velvet" : ""}>
+              {formatCurrency(product.price)}
+            </span>
           </p>
 
           <p className="mt-6 max-w-md text-sm leading-relaxed text-ink-muted">

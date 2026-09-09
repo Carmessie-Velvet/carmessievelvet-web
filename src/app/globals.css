@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* Combined height of the fixed AnnouncementBar + Header stack (see
-     layout.tsx). Single source of truth for the top padding non-hero pages
-     need, and the negative margin the homepage hero cancels it with. */
-  --header-stack-height: 100px;
+  /* Combined height of the fixed PurchaseWindowBanner + AnnouncementBar +
+     Header stack (see layout.tsx). Single source of truth for the top
+     padding non-hero pages need, and the negative margin the homepage hero
+     cancels it with. */
+  --header-stack-height: 140px;
 }
 
 @theme {
@@ -16,6 +17,12 @@
   --color-velvet: #4b1530;
   --color-velvet-light: #8c4a63;
   --color-paper: #fffdfb;
+  /* Deliberately outside the cream/ink/velvet palette — used only by the
+     PurchaseWindowBanner's closed state, where the client specifically
+     wants a color that reads as its own "pay attention" signal rather
+     than blending in with the rest of the site. */
+  --color-ember: #a8461c;
+  --color-ember-light: #c96a30;
 }
 
 @theme inline {
@@ -25,6 +32,18 @@
 body {
   background: var(--color-cream);
   color: var(--color-ink);
+}
+
+/* Diagonal stripe drift for PurchaseWindowBanner — respects
+   prefers-reduced-motion via the rule below, same as every other
+   animation on the site. */
+@keyframes purchase-window-shimmer {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 48px 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { formatCurrency } from "@/lib/format-currency";
+import { formatVariantMeta } from "@/lib/format-variant-meta";
 import { OrderStatusStepper } from "./OrderStatusStepper";
 import { OrderReturnRequestSection } from "./OrderReturnRequestSection";
 import type { Order } from "@/types/order";
@@ -63,7 +64,7 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
               <div>
                 <p className="text-sm text-ink">{item.productName}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                  Talla {item.size} · Cant. {item.quantity}
+                  {formatVariantMeta(item.size, item.selections)} · Cant. {item.quantity}
                 </p>
               </div>
               <p className="text-sm font-medium text-ink">

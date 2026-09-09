@@ -3,6 +3,7 @@ import { Archivo } from "next/font/google";
 import { MotionConfig } from "framer-motion";
 import "./globals.css";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { PurchaseWindowBanner } from "@/components/layout/PurchaseWindowBanner";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartProvider } from "@/context/cart-context";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <CartProvider>
                   <QuickAddProvider>
                     <div className="fixed inset-x-0 top-0 z-40">
+                      <PurchaseWindowBanner />
                       <AnnouncementBar />
                       <Header />
                     </div>
