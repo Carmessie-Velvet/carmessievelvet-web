@@ -30,7 +30,7 @@ import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
 import { usePurchaseWindow } from "@/lib/use-purchase-window";
-import { formatCountdown } from "@/lib/purchase-window";
+import { describeOpenDays, formatCountdown } from "@/lib/purchase-window";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -322,23 +322,24 @@ export default function CheckoutPage() {
     );
   }
 
-  // Checkout only opens Friday–Sunday — the cart itself stays editable any
-  // day (see /carrito), this is the one place purchases are actually
-  // gated. Never blocks once `order` exists (mid-payment): a shopper who
-  // already created the order shouldn't get locked out just because the
-  // window happened to close while they were paying.
+  // Which days checkout is open is admin-configurable (`GET /store/status`,
+  // see use-purchase-window.ts) — the cart itself stays editable any day
+  // (see /carrito), this is the one place purchases are actually gated.
+  // Never blocks once `order` exists (mid-payment): a shopper who already
+  // created the order shouldn't get locked out just because the window
+  // happened to close while they were paying.
   if (purchaseWindow && !purchaseWindow.isOpen && !order) {
     return (
       <div className="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
         <h1 className="text-2xl font-black uppercase tracking-tight text-ink">
-          Los pedidos abren el viernes
+          Pedidos cerrados por hoy
         </h1>
         <p className="mt-3 text-sm text-ink-muted">
-          Solo procesamos pedidos viernes, sábado y domingo. Tu carrito te está esperando — vuelve
-          en ese horario para completar tu compra.
+          Procesamos pedidos {describeOpenDays(purchaseWindow.closedDays)}. Tu carrito te está
+          esperando — vuelve en ese horario para completar tu compra.
         </p>
         <p className="mt-6 text-2xl font-black tracking-tight text-velvet tabular-nums">
-          {formatCountdown(purchaseWindow.secondsRemaining)}
+          {formatCountdown(purchaseWindow.secondsRemaining ?? 0)}
         </p>
         <Link href="/carrito" className={`${buttonClasses("solid")} mt-8`}>
           Volver al carrito
@@ -397,6 +398,11 @@ export default function CheckoutPage() {
           404: isAddressNotFound
             ? "Esa dirección ya no está disponible. Elige otra o agrega una nueva."
             : "El método de envío que elegiste ya no está disponible. Recarga la página para ver las opciones actuales.",
+          // Belt-and-suspenders: the client-side gate above should already
+          // keep a shopper from reaching this call while closed, but a
+          // stale fetch or an admin closing the store mid-checkout can still
+          // race past it — the backend has the final word either way.
+          403: "La tienda no está aceptando pedidos en este momento. Recarga la página para ver el horario actual.",
         })
       );
     } finally {

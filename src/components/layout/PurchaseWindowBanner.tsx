@@ -1,7 +1,7 @@
 "use client";
 
 import { usePurchaseWindow } from "@/lib/use-purchase-window";
-import { formatCountdown } from "@/lib/purchase-window";
+import { describeOpenDays, formatCountdown } from "@/lib/purchase-window";
 
 // Part of the fixed header stack (see layout.tsx) — always on screen, not
 // just at the top of the page, per feedback that it needs to stay "top of
@@ -16,6 +16,9 @@ export function PurchaseWindowBanner() {
   // real clock) — still reserve the slot so the layout never jumps once it
   // resolves a tick later.
   if (!state) return <div className="h-10 bg-ink" aria-hidden="true" />;
+
+  const openDaysText = describeOpenDays(state.closedDays);
+  const neverCloses = state.closedDays.length === 0;
 
   return (
     <div
@@ -42,14 +45,16 @@ export function PurchaseWindowBanner() {
         {state.isOpen ? "Pedidos abiertos" : "Pedidos cerrados"}
       </span>
 
-      <span
-        className={`relative shrink-0 tabular-nums text-[10px] sm:text-xs ${
-          state.isOpen ? "text-cream-soft/85" : "font-bold text-cream-soft"
-        }`}
-      >
-        {state.isOpen ? "Cierra en " : "Abren en "}
-        {formatCountdown(state.secondsRemaining)}
-      </span>
+      {state.secondsRemaining !== null && (
+        <span
+          className={`relative shrink-0 tabular-nums text-[10px] sm:text-xs ${
+            state.isOpen ? "text-cream-soft/85" : "font-bold text-cream-soft"
+          }`}
+        >
+          {state.isOpen ? "Cierra en " : "Abren en "}
+          {formatCountdown(state.secondsRemaining)}
+        </span>
+      )}
 
       <div className="group/info relative flex shrink-0">
         <button
@@ -68,8 +73,10 @@ export function PurchaseWindowBanner() {
             ¿Cómo funciona?
           </p>
           <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-            Procesamos pedidos solo viernes, sábado y domingo. Puedes armar y ajustar tu
-            carrito cualquier día — el pago se habilita únicamente en esas fechas.
+            {neverCloses
+              ? "Por ahora procesamos pedidos todos los días, sin restricción de horario."
+              : `Procesamos pedidos ${openDaysText}. Puedes armar y ajustar tu carrito cualquier
+            día — el pago se habilita únicamente en esas fechas.`}
           </p>
         </div>
       </div>

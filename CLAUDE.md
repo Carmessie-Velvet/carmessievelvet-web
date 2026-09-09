@@ -59,6 +59,16 @@ Verificado en vivo contra el deploy real: la orden se crea (`CM-001000`), el `Pa
 
 **Pendiente real**: nada del lado del checkout en sí — ver la lista de gaps del backend (tracking de orden para invitados, notificaciones) para lo que falta para un checkout "completo".
 
+### Ventana de compra (horario de pedidos)
+
+Qué días la tienda acepta pedidos es **configurable desde el admin** (`PATCH /settings`, campo `closedDays`, `[]` por defecto = abierto todos los días) — no un horario fijo hardcodeado en el frontend. `src/types/store-status.ts` + `src/services/store-status-service.ts` (`GET /store/status`, público) traen el estado resuelto de "hoy" (`open`, `closedDays`, `nextOpenAt`/`opensIn` cuando está cerrado). `src/lib/purchase-window.ts` sólo hace la matemática de cuenta regresiva encima de eso:
+
+- Cerrado → cuenta regresiva hasta `nextOpenAt` (tal cual lo manda la API).
+- Abierto → la API no dice cuándo cierra (sólo resuelve "hoy"), así que `secondsUntilClose` lo deriva client-side escaneando `closedDays` hacia adelante desde el día actual (mismo patrón de `Intl.DateTimeFormat` en `America/Mexico_City` que ya se usaba antes). Si `closedDays` está vacío, la tienda nunca cierra — no hay cuenta regresiva que mostrar (`secondsRemaining: null`), y el banner/tooltip lo dicen explícitamente en vez de mentir con un horario fijo.
+- `describeOpenDays()` arma el texto legible ("viernes, sábado y domingo") en orden lunes→domingo (no domingo-primero, que es como vienen los índices de día de la API) para que se lea natural.
+
+`src/lib/use-purchase-window.ts` refresca el fetch cada 5 minutos (no sólo al montar) para recoger un cambio del admin o el cambio de día sin necesitar recargar. `PurchaseWindowBanner.tsx` (banner fijo en el stack del header) y el gate de `/checkout` (bloquea `POST /orders` si el día está cerrado, antes de llegar a Stripe) leen de este hook — ambos ya reflejan `closedDays` en vivo, no un texto fijo de "viernes, sábado y domingo". El checkout además atrapa el `403 "STORE_CLOSED_TODAY"` de `POST /orders` como red de seguridad (el admin puede cerrar la tienda mientras alguien ya pasó el gate del cliente).
+
 ### Novedades de la API integradas (rate limit, preview de cupón, wishlist)
 
 La API agregó tres cosas que antes estaban en la lista de gaps — ya conectadas:

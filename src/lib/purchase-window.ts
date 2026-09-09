@@ -1,27 +1,24 @@
-// The client only wants checkout open Friday–Sunday (America/Mexico_City) —
-// building a cart stays available every day, only completing a purchase is
-// gated. Computed from `Intl.DateTimeFormat`'s civil-time parts rather than
-// a date library (same "no date-time dependency" convention the backend
-// uses for its own timezone bucketing, docs/API-FRONTEND.md's admin stats
-// section) — Mexico dropped DST nationally in 2022, so there's no seasonal
-// offset shift to account for either.
-//
-// ⚠️ This is a UX gate only. The real enforcement has to live in the
-// backend (`POST /orders` should 400 outside the window) — a shopper who
-// calls the API directly bypasses anything checked only here. Flagged to
-// the backend team; not yet implemented server-side as of this writing.
-const TIMEZONE = "America/Mexico_City";
+// Which days the store accepts orders is now admin-configurable (`GET
+// /store/status`, `closedDays` set from the admin panel) instead of a
+// hardcoded Friday–Sunday window — this module only does the client-side
+// countdown math on top of that server-resolved state, computed from
+// `Intl.DateTimeFormat`'s civil-time parts rather than a date library (same
+// "no date-time dependency" convention the backend uses for its own
+// timezone bucketing, docs/API-FRONTEND.md's admin stats section).
+import type { StoreStatus } from "@/types/store-status";
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const OPEN_WEEKDAYS = new Set([5, 6, 0]); // Fri, Sat, Sun
+const DAY_NAMES_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const SECONDS_PER_DAY = 86400;
 
 interface CivilTime {
   weekday: number; // 0=Sun .. 6=Sat
   secondsIntoDay: number;
 }
 
-function getCivilTime(date: Date): CivilTime {
+function getCivilTime(date: Date, timeZone: string): CivilTime {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
+    timeZone,
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
@@ -40,25 +37,65 @@ function getCivilTime(date: Date): CivilTime {
 
 export interface PurchaseWindowState {
   isOpen: boolean;
-  /** Seconds until the window closes (if open) or opens (if closed). */
-  secondsRemaining: number;
+  /**
+   * Seconds until the window closes (if open) or opens (if closed). `null`
+   * only when open with no `closedDays` configured — the store never
+   * closes, so there's nothing to count down to.
+   */
+  secondsRemaining: number | null;
+  /** Passed through from `StoreStatus` for messaging (see `describeOpenDays`). */
+  closedDays: number[];
 }
 
-export function getPurchaseWindowState(now: Date = new Date()): PurchaseWindowState {
-  const { weekday, secondsIntoDay } = getCivilTime(now);
-  const isOpen = OPEN_WEEKDAYS.has(weekday);
-  const SECONDS_PER_DAY = 86400;
-
-  if (isOpen) {
-    // Closes at the start of Monday (weekday 1) — Fri is 3 days out,
-    // Sat 2, Sun 1.
-    const daysUntilClose = ((8 - weekday) % 7) || 7;
-    return { isOpen, secondsRemaining: daysUntilClose * SECONDS_PER_DAY - secondsIntoDay };
+// The API only resolves "today" (`open`/`nextOpenAt`) — when open, it
+// doesn't say when the window closes, so that's derived client-side from
+// the same `closedDays`/`timezone` the admin configured: scan forward for
+// the next day-of-week that's closed.
+function secondsUntilClose(closedDays: number[], timezone: string, now: Date): number | null {
+  if (closedDays.length === 0) return null;
+  const closed = new Set(closedDays);
+  const { weekday, secondsIntoDay } = getCivilTime(now, timezone);
+  for (let offset = 1; offset <= 7; offset++) {
+    if (closed.has((weekday + offset) % 7)) {
+      return offset * SECONDS_PER_DAY - secondsIntoDay;
+    }
   }
+  return null;
+}
 
-  // Closed (Mon–Thu, weekdays 1-4) — opens at the start of Friday (weekday 5).
-  const daysUntilOpen = (5 - weekday + 7) % 7;
-  return { isOpen, secondsRemaining: daysUntilOpen * SECONDS_PER_DAY - secondsIntoDay };
+export function derivePurchaseWindowState(
+  status: StoreStatus,
+  now: Date = new Date()
+): PurchaseWindowState {
+  if (!status.open) {
+    const secondsRemaining = status.nextOpenAt
+      ? Math.max(0, (new Date(status.nextOpenAt).getTime() - now.getTime()) / 1000)
+      : null;
+    return { isOpen: false, secondsRemaining, closedDays: status.closedDays };
+  }
+  return {
+    isOpen: true,
+    secondsRemaining: secondsUntilClose(status.closedDays, status.timezone, now),
+    closedDays: status.closedDays,
+  };
+}
+
+// Monday-first reading order (1..6, then 0) so a weekend-only window still
+// reads as "viernes, sábado y domingo" instead of "domingo, viernes y
+// sábado" — `DAY_NAMES_ES`/`closedDays` themselves stay Sunday-first to
+// match the API's `Date.getUTCDay()` convention.
+const WEEK_READING_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/** e.g. "todos los días" / "viernes, sábado y domingo" — for banner/gate copy. */
+export function describeOpenDays(closedDays: number[]): string {
+  if (closedDays.length === 0) return "todos los días";
+  const closed = new Set(closedDays);
+  const openDays = WEEK_READING_ORDER.filter((day) => !closed.has(day)).map(
+    (day) => DAY_NAMES_ES[day]
+  );
+  if (openDays.length === 0) return "";
+  if (openDays.length === 1) return openDays[0];
+  return `${openDays.slice(0, -1).join(", ")} y ${openDays[openDays.length - 1]}`;
 }
 
 export function formatCountdown(totalSeconds: number): string {
