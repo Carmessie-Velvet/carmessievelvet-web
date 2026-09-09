@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { formatCurrency } from "@/lib/format-currency";
 import { formatVariantMeta } from "@/lib/format-variant-meta";
+import { formatShippingMethodCode } from "@/lib/shipping-method-label";
 import { OrderStatusStepper } from "./OrderStatusStepper";
 import { OrderReturnRequestSection } from "./OrderReturnRequestSection";
 import type { Order } from "@/types/order";
@@ -42,6 +43,12 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
       {order.trackingNumber && (
         <p className="mt-3 text-sm text-ink-muted">
           Número de rastreo: <span className="text-ink">{order.trackingNumber}</span>
+          {order.carrier && (
+            <>
+              {" "}
+              · <span className="text-ink">{order.carrier}</span>
+            </>
+          )}
         </p>
       )}
 
@@ -86,6 +93,13 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
             <span>−{formatCurrency(order.discountTotal, order.currency.toUpperCase())}</span>
           </div>
         )}
+        <div className="flex justify-between text-ink-muted">
+          <span>
+            Envío: {formatShippingMethodCode(order.shippingMethod)}
+            {order.shippingMethodDescription ? ` (${order.shippingMethodDescription})` : ""}
+          </span>
+          <span>{formatCurrency(order.shippingTotal, order.currency.toUpperCase())}</span>
+        </div>
         <div className="flex justify-between font-medium text-ink">
           <span>Total</span>
           <span>{formatCurrency(order.total, order.currency.toUpperCase())}</span>

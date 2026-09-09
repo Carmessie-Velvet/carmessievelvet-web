@@ -93,6 +93,8 @@ export interface Order {
   shippingMethod: string;
   /** Snapshot of the method's description at purchase time — may be absent. */
   shippingMethodDescription?: string;
+  /** Snapshot of the carrier name (e.g. "Estafeta") — may be absent on older orders. */
+  carrier?: string;
   couponCode?: string;
   items: OrderItem[];
   notes?: string;
