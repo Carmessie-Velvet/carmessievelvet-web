@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { formatCurrency } from "@/lib/format-currency";
 import { formatVariantMeta } from "@/lib/format-variant-meta";
+import { formatShippingMethodCode } from "@/lib/shipping-method-label";
 import { OrderStatusStepper } from "./OrderStatusStepper";
 import { OrderReturnRequestSection } from "./OrderReturnRequestSection";
 import type { Order } from "@/types/order";
@@ -42,6 +43,12 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
       {order.trackingNumber && (
         <p className="mt-3 text-sm text-ink-muted">
           Número de rastreo: <span className="text-ink">{order.trackingNumber}</span>
+          {order.carrier && (
+            <>
+              {" "}
+              · <span className="text-ink">{order.carrier}</span>
+            </>
+          )}
         </p>
       )}
 
@@ -88,9 +95,8 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
         )}
         <div className="flex justify-between text-ink-muted">
           <span>
-            {order.shippingMethodDescription
-              ? `Envío (${order.shippingMethodDescription})`
-              : "Envío"}
+            Envío: {formatShippingMethodCode(order.shippingMethod)}
+            {order.shippingMethodDescription ? ` (${order.shippingMethodDescription})` : ""}
           </span>
           <span>{formatCurrency(order.shippingTotal, order.currency.toUpperCase())}</span>
         </div>

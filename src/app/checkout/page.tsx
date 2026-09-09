@@ -26,6 +26,7 @@ import { ApiError } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/format-currency";
 import { cartItemKey } from "@/lib/cart-item-key";
 import { formatVariantMeta } from "@/lib/format-variant-meta";
+import { formatShippingMethodCode } from "@/lib/shipping-method-label";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
@@ -49,15 +50,6 @@ const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   USAGE_LIMIT_REACHED: "Este cupón alcanzó su límite de usos.",
   BELOW_MINIMUM_AMOUNT: "Tu compra no alcanza el mínimo para aplicar este cupón.",
 };
-
-// Codes come from an admin-editable catalog, so there's no fixed set to map
-// to hand-written labels — just make whatever code exists readable
-// ("STANDARD" → "Standard", "PICKUP_CDMX" → "Pickup cdmx"). The human-
-// readable detail lives in the method's own `description`.
-function shippingMethodLabel(method: ShippingMethod): string {
-  const words = method.code.replace(/[_-]+/g, " ").trim().toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
 
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: "",
@@ -677,7 +669,7 @@ export default function CheckoutPage() {
                         onChange={() => setShippingMethodCode(method.code)}
                       />
                       <div>
-                        <p className="text-sm text-ink">{shippingMethodLabel(method)}</p>
+                        <p className="text-sm text-ink">{formatShippingMethodCode(method.code)}</p>
                         <p className="text-xs text-ink-muted">
                           {method.description ?? method.code}
                         </p>
@@ -746,7 +738,7 @@ export default function CheckoutPage() {
             { label: "Subtotal", value: formatCurrency(subtotal) },
             {
               label: selectedShipping
-                ? `Envío (${shippingMethodLabel(selectedShipping)})`
+                ? `Envío (${formatShippingMethodCode(selectedShipping.code)})`
                 : "Envío",
               value: selectedShipping ? formatCurrency(selectedShipping.price) : "—",
             },
@@ -1064,9 +1056,9 @@ function PaymentStep({
             // it from the shipping-method catalog — without this row the total
             // jumps past the subtotal with nothing to explain the difference.
             {
-              label: order.shippingMethodDescription
-                ? `Envío (${order.shippingMethodDescription})`
-                : "Envío",
+              label: `Envío: ${formatShippingMethodCode(order.shippingMethod)}${
+                order.shippingMethodDescription ? ` (${order.shippingMethodDescription})` : ""
+              }`,
               value: formatCurrency(order.shippingTotal, order.currency.toUpperCase()),
             },
             { label: "Total", value: formatCurrency(order.total, order.currency.toUpperCase()), strong: true },
