@@ -97,10 +97,6 @@ export function ProductCard({ product }: { product: Product }) {
           <button
             type="button"
             onClick={(e) => {
-              // A set needs a size/color per piece — too much to pick in the
-              // compact quick-add modal, so let this fall through to the
-              // card's own <Link> and send the shopper to the PDP instead.
-              if (product.category.type === "SET") return;
               e.preventDefault();
               e.stopPropagation();
               openQuickAdd(product);
