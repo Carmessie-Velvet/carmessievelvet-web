@@ -86,6 +86,14 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
             <span>−{formatCurrency(order.discountTotal, order.currency.toUpperCase())}</span>
           </div>
         )}
+        <div className="flex justify-between text-ink-muted">
+          <span>
+            {order.shippingMethodDescription
+              ? `Envío (${order.shippingMethodDescription})`
+              : "Envío"}
+          </span>
+          <span>{formatCurrency(order.shippingTotal, order.currency.toUpperCase())}</span>
+        </div>
         <div className="flex justify-between font-medium text-ink">
           <span>Total</span>
           <span>{formatCurrency(order.total, order.currency.toUpperCase())}</span>
