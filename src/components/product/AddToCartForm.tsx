@@ -98,8 +98,15 @@ function ComponentSelector({
   onChange: (next: ComponentSelection) => void;
 }) {
   const hasColorChoice = component.colors.length > 1;
-  const activeColor = selection.color ?? component.colors[0];
-  const sizeOptions = component.options.filter((option) => option.color === activeColor);
+  // A piece with no color of its own comes back as `colors: []` and every
+  // option's `color: null` (not `undefined`) — comparing against `undefined`
+  // there would never match (`null !== undefined`) and silently filter out
+  // every size. Skip the color filter entirely when there's nothing to pick.
+  const activeColor = component.colors.length > 0 ? (selection.color ?? component.colors[0]) : undefined;
+  const sizeOptions =
+    component.colors.length > 0
+      ? component.options.filter((option) => option.color === activeColor)
+      : component.options;
 
   return (
     <div>
