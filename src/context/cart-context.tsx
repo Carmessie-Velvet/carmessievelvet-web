@@ -8,10 +8,13 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { CartItem } from "@/types/cart";
+import type { CartItem, CartSelection } from "@/types/cart";
 import type { Product, Size } from "@/types/product";
+import { cartItemKey } from "@/lib/cart-item-key";
 
 const STORAGE_KEY = "carmessie-velvet-cart";
+
+export type CartVariant = { size: Size } | { selections: CartSelection[] };
 
 type Listener = () => void;
 
@@ -98,9 +101,9 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, size: Size, quantity?: number) => void;
-  removeItem: (productId: string, size: Size) => void;
-  setQuantity: (productId: string, size: Size, quantity: number) => void;
+  addItem: (product: Product, variant: CartVariant, quantity?: number) => void;
+  removeItem: (key: string) => void;
+  setQuantity: (key: string, quantity: number) => void;
   clear: () => void;
   isDrawerOpen: boolean;
   openDrawer: () => void;
@@ -117,44 +120,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addItem = useCallback(
-    (product: Product, size: Size, quantity = 1) => {
+    (product: Product, variant: CartVariant, quantity = 1) => {
       const current = cartStore.getItems();
-      const existing = current.find(
-        (item) => item.product.id === product.id && item.size === size
-      );
+      const candidate: CartItem = { product, quantity, ...variant };
+      const key = cartItemKey(candidate);
+      const existing = current.find((item) => cartItemKey(item) === key);
       const next = existing
         ? current.map((item) =>
             item === existing
               ? { ...item, quantity: item.quantity + quantity }
               : item
           )
-        : [...current, { product, size, quantity }];
+        : [...current, candidate];
       cartStore.setItems(next);
     },
     []
   );
 
-  const removeItem = useCallback((productId: string, size: Size) => {
-    const next = cartStore
-      .getItems()
-      .filter((item) => !(item.product.id === productId && item.size === size));
+  const removeItem = useCallback((key: string) => {
+    const next = cartStore.getItems().filter((item) => cartItemKey(item) !== key);
     cartStore.setItems(next);
   }, []);
 
-  const setQuantity = useCallback(
-    (productId: string, size: Size, quantity: number) => {
-      const next = cartStore
-        .getItems()
-        .map((item) =>
-          item.product.id === productId && item.size === size
-            ? { ...item, quantity }
-            : item
-        )
-        .filter((item) => item.quantity > 0);
-      cartStore.setItems(next);
-    },
-    []
-  );
+  const setQuantity = useCallback((key: string, quantity: number) => {
+    const next = cartStore
+      .getItems()
+      .map((item) => (cartItemKey(item) === key ? { ...item, quantity } : item))
+      .filter((item) => item.quantity > 0);
+    cartStore.setItems(next);
+  }, []);
 
   const clear = useCallback(() => cartStore.setItems([]), []);
 

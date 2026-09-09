@@ -35,13 +35,25 @@ export interface ShippingAddress {
   reference?: string;
 }
 
+/** A purchased piece of a SET line — snapshot at purchase time, per component. */
+export interface OrderItemSelection {
+  id: string;
+  componentName: string;
+  position: number;
+  size: string;
+  color?: string;
+}
+
 export interface OrderItem {
   id: string;
   productId: string | null;
   productName: string;
   productSku: string;
   productImage: string;
-  size: string;
+  /** `null` for a SET line — see `selections` instead. */
+  size: string | null;
+  /** One entry per component, only for a SET line — empty for a SIMPLE line. */
+  selections: OrderItemSelection[];
   quantity: number;
   unitPrice: number;
   discountPercentage?: number;
@@ -115,9 +127,18 @@ export interface CreateOrderResult extends Order {
   returnUrl: string;
 }
 
+export interface OrderItemSelectionInput {
+  componentId: string;
+  size: string;
+  color?: string;
+}
+
 export interface OrderItemInput {
   productId: string;
-  size: string;
+  /** SIMPLE product — mutually exclusive with `selections`. */
+  size?: string;
+  /** SET product — exactly one entry per component. */
+  selections?: OrderItemSelectionInput[];
   quantity: number;
 }
 

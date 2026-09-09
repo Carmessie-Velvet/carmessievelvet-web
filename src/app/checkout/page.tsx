@@ -24,9 +24,13 @@ import { locationService } from "@/services/location-service";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { ApiError } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/format-currency";
+import { cartItemKey } from "@/lib/cart-item-key";
+import { formatVariantMeta } from "@/lib/format-variant-meta";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
 import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
 import { cardBrandLabel } from "@/lib/card-brand-label";
+import { usePurchaseWindow } from "@/lib/use-purchase-window";
+import { formatCountdown } from "@/lib/purchase-window";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -111,6 +115,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clear, removeItem, setQuantity } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { open: openAuthModal } = useAuthModal();
+  const purchaseWindow = usePurchaseWindow();
 
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [guestEmail, setGuestEmail] = useState("");
@@ -317,6 +322,31 @@ export default function CheckoutPage() {
     );
   }
 
+  // Checkout only opens Friday–Sunday — the cart itself stays editable any
+  // day (see /carrito), this is the one place purchases are actually
+  // gated. Never blocks once `order` exists (mid-payment): a shopper who
+  // already created the order shouldn't get locked out just because the
+  // window happened to close while they were paying.
+  if (purchaseWindow && !purchaseWindow.isOpen && !order) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">
+          Los pedidos abren el viernes
+        </h1>
+        <p className="mt-3 text-sm text-ink-muted">
+          Solo procesamos pedidos viernes, sábado y domingo. Tu carrito te está esperando — vuelve
+          en ese horario para completar tu compra.
+        </p>
+        <p className="mt-6 text-2xl font-black tracking-tight text-velvet tabular-nums">
+          {formatCountdown(purchaseWindow.secondsRemaining)}
+        </p>
+        <Link href="/carrito" className={`${buttonClasses("solid")} mt-8`}>
+          Volver al carrito
+        </Link>
+      </div>
+    );
+  }
+
   function updateAddress<K extends keyof ShippingAddress>(key: K, value: string) {
     setAddress((prev) => ({ ...prev, [key]: value }));
   }
@@ -334,8 +364,16 @@ export default function CheckoutPage() {
         guestEmail: isAuthenticated ? undefined : guestEmail,
         items: items.map((item) => ({
           productId: item.product.id,
-          size: item.size,
           quantity: item.quantity,
+          ...(item.selections
+            ? {
+                selections: item.selections.map(({ componentId, size, color }) => ({
+                  componentId,
+                  size,
+                  color,
+                })),
+              }
+            : { size: item.size }),
         })),
         ...(usingSavedAddress
           ? { shippingAddressId: selectedAddressId }
@@ -376,8 +414,8 @@ export default function CheckoutPage() {
         code,
         items.map((item) => ({
           productId: item.product.id,
-          size: item.size,
           quantity: item.quantity,
+          ...(item.size ? { size: item.size } : {}),
         }))
       );
       setCouponPreview(result);
@@ -672,18 +710,20 @@ export default function CheckoutPage() {
 
         <OrderSummary
           className="lg:sticky lg:top-24 lg:order-2"
-          lines={items.map((item) => ({
-            key: `${item.product.id}-${item.size}`,
-            href: `/producto/${item.product.slug}`,
-            image: item.product.images[0],
-            name: item.product.name,
-            meta: `Talla ${item.size}`,
-            amount: formatCurrency(item.product.price * item.quantity),
-            quantity: item.quantity,
-            onQuantityChange: (quantity: number) =>
-              setQuantity(item.product.id, item.size, quantity),
-            onRemove: () => removeItem(item.product.id, item.size),
-          }))}
+          lines={items.map((item) => {
+            const key = cartItemKey(item);
+            return {
+              key,
+              href: `/producto/${item.product.slug}`,
+              image: item.product.images[0],
+              name: item.product.name,
+              meta: formatVariantMeta(item.size, item.selections),
+              amount: formatCurrency(item.product.price * item.quantity),
+              quantity: item.quantity,
+              onQuantityChange: (quantity: number) => setQuantity(key, quantity),
+              onRemove: () => removeItem(key),
+            };
+          })}
           couponSlot={
             <CouponField
               code={couponCode}
@@ -944,6 +984,7 @@ function PaymentStep({
   const addressSummary = `${address.fullName} — ${address.street} ${address.extNumber}${
     address.intNumber ? `, Int. ${address.intNumber}` : ""
   }, ${address.suburb}, ${address.city}, ${address.state} ${address.postalCode}`;
+  const hasMadeToOrderItems = order.items.some((item) => item.madeToOrder);
 
   const stripePromise = useMemo(
     () => loadStripe(order.publishableKey),
@@ -962,6 +1003,20 @@ function PaymentStep({
             </span>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Pago</p>
           </div>
+
+          {hasMadeToOrderItems && (
+            <div className="mb-5 border border-sand bg-cream-soft px-4 py-3.5 text-sm text-ink">
+              <p className="font-medium">Tu pedido incluye piezas hechas sobre pedido.</p>
+              <p className="mt-1 text-ink-muted">
+                Antes de que salga, considera 3 a 4 semanas de elaboración
+                {order.shippingMethodDescription
+                  ? ` — más el tiempo de envío (${order.shippingMethodDescription})`
+                  : ", además del tiempo de envío"}
+                . El tiempo de envío empieza a contar hasta que tu pedido esté listo.
+              </p>
+            </div>
+          )}
+
           <div className="border border-sand bg-paper p-5">
             <Elements
               stripe={stripePromise}
@@ -984,7 +1039,7 @@ function PaymentStep({
             href: `/producto/${item.productSku.toLowerCase()}`,
             image: { src: item.productImage, alt: item.productName },
             name: item.productName,
-            meta: `Talla ${item.size} · Cant. ${item.quantity}`,
+            meta: `${formatVariantMeta(item.size, item.selections)} · Cant. ${item.quantity}`,
             amount: formatCurrency(item.lineTotal, order.currency.toUpperCase()),
           }))}
           addressSummary={addressSummary}

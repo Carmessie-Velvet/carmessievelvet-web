@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import type { CartItem } from "@/types/cart";
 import { useCart } from "@/context/cart-context";
 import { formatCurrency } from "@/lib/format-currency";
+import { cartItemKey } from "@/lib/cart-item-key";
+import { formatVariantMeta } from "@/lib/format-variant-meta";
 
 export function CartLineItem({
   item,
@@ -15,6 +17,7 @@ export function CartLineItem({
   onNavigate?: () => void;
 }) {
   const { removeItem, setQuantity } = useCart();
+  const key = cartItemKey(item);
 
   return (
     <motion.li
@@ -50,7 +53,7 @@ export function CartLineItem({
               {item.product.name}
             </Link>
             <p className="mt-1 text-xs uppercase tracking-[0.1em] text-ink-muted">
-              Talla {item.size}
+              {formatVariantMeta(item.size, item.selections)}
             </p>
           </div>
           <p className="text-sm font-medium text-ink">
@@ -63,9 +66,7 @@ export function CartLineItem({
             <button
               type="button"
               aria-label="Disminuir cantidad"
-              onClick={() =>
-                setQuantity(item.product.id, item.size, item.quantity - 1)
-              }
+              onClick={() => setQuantity(key, item.quantity - 1)}
               className="flex h-7 w-7 items-center justify-center text-ink hover:bg-cream-soft"
             >
               −
@@ -74,9 +75,7 @@ export function CartLineItem({
             <button
               type="button"
               aria-label="Aumentar cantidad"
-              onClick={() =>
-                setQuantity(item.product.id, item.size, item.quantity + 1)
-              }
+              onClick={() => setQuantity(key, item.quantity + 1)}
               className="flex h-7 w-7 items-center justify-center text-ink hover:bg-cream-soft"
             >
               +
@@ -84,7 +83,7 @@ export function CartLineItem({
           </div>
           <button
             type="button"
-            onClick={() => removeItem(item.product.id, item.size)}
+            onClick={() => removeItem(key)}
             className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
           >
             Quitar

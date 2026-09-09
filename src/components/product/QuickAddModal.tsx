@@ -8,6 +8,8 @@ import { useCart } from "@/context/cart-context";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import { formatCurrency } from "@/lib/format-currency";
 import { isSoldOut } from "@/lib/product-stock";
+import { discountPercent } from "@/lib/discount";
+import { DiscountBadge } from "@/components/product/DiscountBadge";
 import type { Size } from "@/types/product";
 
 export function QuickAddModal() {
@@ -25,7 +27,7 @@ export function QuickAddModal() {
 
   function handleAdd() {
     if (!product || !selectedSize) return;
-    addItem(product, selectedSize);
+    addItem(product, { size: selectedSize });
     handleClose();
     openDrawer();
   }
@@ -80,13 +82,22 @@ export function QuickAddModal() {
               <h2 id="quick-add-heading" className="mt-1.5 text-xl font-black tracking-tight text-ink">
                 {product.name}
               </h2>
+              {discountPercent(product) && (
+                <DiscountBadge percent={discountPercent(product)!} className="mt-2" />
+              )}
               <p className="mt-1 text-sm font-medium uppercase tracking-[0.08em] text-ink-muted">
                 {product.compareAtPrice && (
                   <span className="mr-2 line-through opacity-60">
                     {formatCurrency(product.compareAtPrice)}
                   </span>
                 )}
-                {formatCurrency(product.price)}
+                <span
+                  className={
+                    discountPercent(product) ? "text-base font-bold normal-case tracking-normal text-velvet" : ""
+                  }
+                >
+                  {formatCurrency(product.price)}
+                </span>
               </p>
 
               <p className="mt-6 text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">

@@ -5,11 +5,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Product } from "@/types/product";
 import { formatCurrency } from "@/lib/format-currency";
+import { discountPercent } from "@/lib/discount";
 import { useQuickAdd } from "@/context/quick-add-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useAuth } from "@/context/auth-context";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { HeartIcon } from "@/components/icons/HeartIcon";
+import { DiscountBadge } from "@/components/product/DiscountBadge";
 import { isSoldOut } from "@/lib/product-stock";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -20,6 +22,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { isWishlisted, toggle } = useWishlist();
   const wishlisted = isWishlisted(product.id);
   const soldOut = isSoldOut(product);
+  const discount = discountPercent(product);
 
   function handleToggleWishlist(e: React.MouseEvent) {
     e.preventDefault();
@@ -81,6 +84,8 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="absolute left-3 top-3 bg-ink/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
             Agotado
           </span>
+        ) : discount ? (
+          <DiscountBadge percent={discount} className="absolute left-3 top-3" />
         ) : (
           product.isNew && (
             <span className="absolute left-3 top-3 bg-velvet px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
@@ -92,6 +97,10 @@ export function ProductCard({ product }: { product: Product }) {
           <button
             type="button"
             onClick={(e) => {
+              // A set needs a size/color per piece — too much to pick in the
+              // compact quick-add modal, so let this fall through to the
+              // card's own <Link> and send the shopper to the PDP instead.
+              if (product.category.type === "SET") return;
               e.preventDefault();
               e.stopPropagation();
               openQuickAdd(product);
@@ -119,7 +128,9 @@ export function ProductCard({ product }: { product: Product }) {
             {formatCurrency(product.compareAtPrice)}
           </span>
         )}
-        {formatCurrency(product.price)}
+        <span className={discount ? "text-sm font-bold normal-case tracking-normal text-velvet" : ""}>
+          {formatCurrency(product.price)}
+        </span>
       </p>
     </Link>
   );
