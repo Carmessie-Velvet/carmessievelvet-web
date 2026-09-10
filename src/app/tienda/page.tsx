@@ -8,6 +8,7 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { TiendaFilters } from "@/components/product/TiendaFilters";
 import { Pagination } from "@/components/product/Pagination";
 
+
 // Catalog data (price, stock) is live in the real API.
 export const revalidate = 60;
 
