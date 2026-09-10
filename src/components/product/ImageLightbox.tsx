@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
+import { useDragScroll } from "@/lib/use-drag-scroll";
 import type { ProductImage } from "@/types/product";
 
 // The image box is sized off viewport *height* (`h-[70vh]` + `aspect-[2/3]`),
@@ -35,6 +36,7 @@ export function ImageLightbox({
   productName: string;
 }) {
   const isOpen = index !== null;
+  const { trackRef, dragHandlers } = useDragScroll<HTMLDivElement>();
 
   useLockBodyScroll(isOpen);
   useEscapeKey(onClose, isOpen);
@@ -161,7 +163,9 @@ export function ImageLightbox({
 
           {images.length > 1 && (
             <div
-              className="flex shrink-0 justify-center gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              ref={trackRef}
+              {...dragHandlers}
+              className="flex shrink-0 cursor-grab justify-center gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {images.map((image, i) => (
@@ -175,7 +179,7 @@ export function ImageLightbox({
                     i === index ? "opacity-100 ring-2 ring-cream-soft" : "opacity-50 hover:opacity-80"
                   }`}
                 >
-                  <Image src={image.src} alt={image.alt} fill sizes="44px" className="object-cover" />
+                  <Image src={image.src} alt={image.alt} fill sizes="44px" draggable={false} className="object-cover" />
                 </button>
               ))}
             </div>
