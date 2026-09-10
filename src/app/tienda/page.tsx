@@ -6,6 +6,7 @@ import { productService } from "@/services/product-service";
 import { SITE_URL } from "@/lib/site-url";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { TiendaFilters } from "@/components/product/TiendaFilters";
+import { Pagination } from "@/components/product/Pagination";
 
 // Catalog data (price, stock) is live in the real API.
 export const revalidate = 60;
@@ -73,6 +74,10 @@ const SORT_MAP: Record<string, { sortBy: ProductSortBy; sortOrder: "ASC" | "DESC
 
 const VALID_SIZES: Size[] = ["XS", "S", "M", "L"];
 
+// 4 columns on desktop x 3 rows — matches how the grid actually lays out
+// (see ProductGrid's lg:grid-cols-4) instead of an arbitrary round number.
+const PAGE_SIZE = 12;
+
 export default async function TiendaPage({
   searchParams,
 }: {
@@ -81,21 +86,27 @@ export default async function TiendaPage({
     q?: string;
     talla?: string;
     orden?: string;
+    pagina?: string;
   }>;
 }) {
-  const { categoria, q, talla, orden } = await searchParams;
+  const { categoria, q, talla, orden, pagina } = await searchParams;
   const sort = SORT_MAP[orden ?? "recientes"] ?? SORT_MAP.recientes;
   const size = VALID_SIZES.find((s) => s === talla);
+  const requestedPage = Number(pagina);
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
-  const [products, categories] = await Promise.all([
-    productService.getAll({
+  const [productPage, categories] = await Promise.all([
+    productService.getPage({
       categorySlug: categoria,
       search: q,
       size,
+      page,
+      limit: PAGE_SIZE,
       ...sort,
     }),
     productService.getCategories(),
   ]);
+  const products = productPage.items;
 
   const activeCategory = categories.find((c) => c.slug === categoria);
 
@@ -137,6 +148,12 @@ export default async function TiendaPage({
       <div className="mt-10">
         <ProductGrid products={products} />
       </div>
+
+      <Pagination
+        currentPage={productPage.page}
+        totalPages={productPage.totalPages}
+        searchParams={{ categoria, q, talla, orden }}
+      />
     </div>
   );
 }

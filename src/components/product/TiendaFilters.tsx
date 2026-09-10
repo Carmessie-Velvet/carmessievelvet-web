@@ -43,6 +43,10 @@ export function TiendaFilters() {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
+    // Any filter change invalidates the current page number (a different
+    // result set may not even have that many pages) — always land back on
+    // page 1 rather than risk an out-of-range page silently going empty.
+    params.delete("pagina");
     router.push(`/tienda?${params.toString()}`);
   }
 
