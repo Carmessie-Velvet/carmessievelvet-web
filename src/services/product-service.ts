@@ -1,4 +1,4 @@
-import type { Category, Product, ProductImage, Size } from "@/types/product";
+import type { Category, CategoryType, Product, ProductComponent, ProductImage, Size } from "@/types/product";
 import type { CouponPreview } from "@/types/coupon";
 import { apiFetch, ApiError } from "@/lib/api-client";
 
@@ -21,7 +21,8 @@ export interface ProductListOptions {
  */
 export interface CouponPreviewLine {
   productId: string;
-  size: Size;
+  /** Omit for a `category.type: "SET"` line — size never enters this calc. */
+  size?: Size;
   quantity: number;
 }
 
@@ -38,8 +39,11 @@ const ALL_SIZES: Size[] = ["XS", "S", "M", "L"];
 // The API has no category slug — only `id` + `name`, and its seeded names
 // are singular ("Corset"). Override display + slug for the two known
 // categories so nav/URLs stay exactly what they were on mock data; any
-// future category falls back to a plain lowercase-dashed slug.
-const CATEGORY_OVERRIDES: Record<string, Category> = {
+// future category falls back to a plain lowercase-dashed slug. `type` is
+// never part of this override — it always comes straight from the API (see
+// mapCategory), since a category's shape is never something the frontend
+// gets to decide.
+const CATEGORY_OVERRIDES: Record<string, { slug: string; name: string }> = {
   corset: { slug: "corsets", name: "Corsets" },
   sets: { slug: "sets", name: "Sets" },
 };
@@ -49,6 +53,22 @@ interface ApiCategory {
   name: string;
   description?: string;
   active: boolean;
+  type: CategoryType;
+}
+
+interface ApiProductComponentOption {
+  size: Size;
+  color?: string;
+  available: boolean;
+}
+
+interface ApiProductComponent {
+  id: string;
+  name: string;
+  position: number;
+  colors: string[];
+  options: ApiProductComponentOption[];
+  inStock: boolean;
 }
 
 interface ApiTag {
@@ -78,9 +98,13 @@ export interface ApiStoreProduct {
   category?: ApiCategory;
   tags: ApiTag[];
   images: string[];
+  /** No placeholder (unlike `images`) — `null` until an admin uploads one. */
+  videoUrl: string | null;
   availableSizes: Size[];
   inStock: boolean;
   madeToOrder: boolean;
+  /** Empty for `category.type: "SIMPLE"` — populated only for a "SET" product. */
+  components: ApiProductComponent[];
 }
 
 interface ApiPaginated<T> {
@@ -92,13 +116,32 @@ interface ApiPaginated<T> {
 }
 
 function mapCategory(api: ApiCategory | undefined): Category {
-  if (!api) return { slug: "", name: "" };
+  // POST /me/wishlist's embedded product is missing `category` entirely (see
+  // ApiStoreProduct.category above) — default to SIMPLE, since there's no
+  // type to read and every product wishlisted through that gap predates SET.
+  if (!api) return { slug: "", name: "", type: "SIMPLE" };
   const key = api.name.trim().toLowerCase();
-  return CATEGORY_OVERRIDES[key] ?? { slug: key.replace(/\s+/g, "-"), name: api.name };
+  const override = CATEGORY_OVERRIDES[key];
+  return {
+    slug: override?.slug ?? key.replace(/\s+/g, "-"),
+    name: override?.name ?? api.name,
+    type: api.type,
+  };
 }
 
 function mapImages(urls: string[], productName: string): ProductImage[] {
   return urls.map((src) => ({ src, alt: productName }));
+}
+
+function mapComponents(components: ApiProductComponent[] | undefined): ProductComponent[] {
+  return (components ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    position: c.position,
+    colors: c.colors,
+    options: c.options,
+    inStock: c.inStock,
+  }));
 }
 
 // The product's SKU (e.g. "SET-015") doubles as its URL slug — lowercased
@@ -115,10 +158,12 @@ export function mapProduct(api: ApiStoreProduct, isNew = false): Product {
     currency: "MXN",
     category: mapCategory(api.category),
     images: mapImages(api.images, api.name),
+    videoUrl: api.videoUrl ?? null,
     variants: ALL_SIZES.map((size) => ({
       size,
       inStock: api.availableSizes.includes(size),
     })),
+    components: mapComponents(api.components),
     isNew,
     // Defensive `?? false` for the same reason `category` is optional above:
     // POST /me/wishlist's embedded product isn't a faithful StoreProductDto.

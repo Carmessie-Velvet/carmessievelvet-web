@@ -1,32 +1,55 @@
 import Image from "next/image";
 import Link from "next/link";
 import { productService } from "@/services/product-service";
+import { heroService } from "@/services/hero-service";
 import { ProductGrid } from "@/components/product/ProductGrid";
-import { VelvetDivider } from "@/components/layout/VelvetDivider";
 import { VideoShowcase } from "@/components/layout/VideoShowcase";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
+import type { Hero } from "@/types/hero";
 
 const categoryPreview: Record<string, string> = {
   corsets: "/products/corset-brocade.jpeg",
   sets: "/products/set-black-fur.jpeg",
 };
 
+// Shown only if the admin hasn't activated a hero yet (GET /store/hero
+// returns `[]` in that case) — the site's original look, so the homepage
+// never goes blank up top while the admin panel is still being set up.
+const FALLBACK_HERO: Hero = {
+  id: "fallback",
+  title: "Nueva colección",
+  content: "Vestir con la textura de lo memorable.",
+  buttonLabel: "Ver colección",
+  buttonPath: "/tienda",
+  imageUrl: "/products/corset-brocade.jpeg",
+  imageWidth: 1920,
+  imageHeight: 1080,
+  sortOrder: 0,
+};
+
 // Catalog data (new arrivals, categories) is live in the real API.
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [newArrivals, categories] = await Promise.all([
+  const [newArrivals, categories, allProducts, heroes] = await Promise.all([
     productService.getNewArrivals(4),
     productService.getCategories(),
+    productService.getAll(),
+    heroService.getActive(),
   ]);
+  const videoProducts = allProducts.filter((product) => product.videoUrl);
+  // `GET /store/hero` is a catalog (several active heroes = a carousel per
+  // the API's own docs) but there's no carousel UI here yet — only the
+  // first one renders. Not a bug: today the admin only ever activates one.
+  const hero = heroes[0] ?? FALLBACK_HERO;
 
   return (
     <div>
       <section className="relative -mt-[var(--header-stack-height)] h-[88svh] min-h-[520px] w-full overflow-hidden bg-ink">
         <Image
-          src="/products/corset-brocade.jpeg"
-          alt="Corset Alado Brocado de la colección Carmessie Velvet"
+          src={hero.imageUrl}
+          alt={hero.title ?? hero.content ?? "Carmessie Velvet"}
           fill
           priority
           sizes="100vw"
@@ -39,21 +62,25 @@ export default async function HomePage() {
           delay={0.15}
           className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-16"
         >
-          <p className="text-xs font-medium uppercase tracking-[0.3em] text-cream-soft/80">
-            Nueva colección
-          </p>
-          <h1 className="mt-3 max-w-md text-4xl font-black leading-[1.05] tracking-tight text-cream-soft sm:text-6xl">
-            Vestir con la textura de lo memorable.
-          </h1>
-          <div className="mt-7">
-            <Link href="/tienda" className={buttonClasses("outline-light")}>
-              Ver colección
-            </Link>
-          </div>
+          {hero.title && (
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-cream-soft/80">
+              {hero.title}
+            </p>
+          )}
+          {hero.content && (
+            <h1 className="mt-3 max-w-md text-4xl font-black leading-[1.05] tracking-tight text-cream-soft sm:text-6xl">
+              {hero.content}
+            </h1>
+          )}
+          {hero.buttonLabel && hero.buttonPath && (
+            <div className="mt-7">
+              <Link href={hero.buttonPath} className={buttonClasses("outline-light")}>
+                {hero.buttonLabel}
+              </Link>
+            </div>
+          )}
         </Reveal>
       </section>
-
-      <VelvetDivider label="Tiraje corto · Piezas que no se repiten" />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <Reveal>
@@ -107,7 +134,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <VideoShowcase />
+      <VideoShowcase products={videoProducts} />
     </div>
   );
 }

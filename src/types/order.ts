@@ -5,7 +5,8 @@ export type OrderStatus =
   | "SHIPPED"
   | "DELIVERED"
   | "CANCELLED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED";
 
 export interface ShippingAddress {
   fullName: string;
@@ -34,13 +35,25 @@ export interface ShippingAddress {
   reference?: string;
 }
 
+/** A purchased piece of a SET line — snapshot at purchase time, per component. */
+export interface OrderItemSelection {
+  id: string;
+  componentName: string;
+  position: number;
+  size: string;
+  color?: string;
+}
+
 export interface OrderItem {
   id: string;
   productId: string | null;
   productName: string;
   productSku: string;
   productImage: string;
-  size: string;
+  /** `null` for a SET line — see `selections` instead. */
+  size: string | null;
+  /** One entry per component, only for a SET line — empty for a SIMPLE line. */
+  selections: OrderItemSelection[];
   quantity: number;
   unitPrice: number;
   discountPercentage?: number;
@@ -48,6 +61,21 @@ export interface OrderItem {
   lineTotal: number;
   /** Snapshot: whether the product was made-to-order at purchase time. */
   madeToOrder: boolean;
+}
+
+export type ReturnRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type RefundMode = "FULL" | "FULL_MINUS_SHIPPING" | "PARTIAL";
+
+export interface ReturnRequest {
+  id: string;
+  status: ReturnRequestStatus;
+  reason: string;
+  createdAt: string;
+  resolvedAt?: string | null;
+  resolutionNote?: string | null;
+  refundMode?: RefundMode | null;
+  refundedAmount?: number | null;
 }
 
 export interface Order {
@@ -65,10 +93,26 @@ export interface Order {
   shippingMethod: string;
   /** Snapshot of the method's description at purchase time — may be absent. */
   shippingMethodDescription?: string;
+  /** Snapshot of the carrier name (e.g. "Estafeta") — may be absent on older orders. */
+  carrier?: string;
   couponCode?: string;
   items: OrderItem[];
   notes?: string;
   trackingNumber?: string;
+  /**
+   * The most recent post-delivery return/refund request, if the buyer ever
+   * submitted one — only present on single-order reads (`GET /orders/:id`,
+   * `GET /me/orders/:id`, guest tracking), never on the paginated list.
+   */
+  returnRequest?: ReturnRequest | null;
+  /**
+   * Total refunded so far, in pesos — `0` until an admin refunds the order
+   * (via `/cancel`, whether or not a return request was ever involved).
+   * Can be less than `total` when `status` is `PARTIALLY_REFUNDED`.
+   */
+  refundedAmount: number;
+  /** Why an admin cancelled/refunded this order — set together with the refund, not before. */
+  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,9 +129,18 @@ export interface CreateOrderResult extends Order {
   returnUrl: string;
 }
 
+export interface OrderItemSelectionInput {
+  componentId: string;
+  size: string;
+  color?: string;
+}
+
 export interface OrderItemInput {
   productId: string;
-  size: string;
+  /** SIMPLE product — mutually exclusive with `selections`. */
+  size?: string;
+  /** SET product — exactly one entry per component. */
+  selections?: OrderItemSelectionInput[];
   quantity: number;
 }
 

@@ -5,16 +5,25 @@ import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
 import { isSoldOut } from "@/lib/product-stock";
+import { useSetSelections } from "@/lib/use-set-selections";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
+import { ComponentSelector } from "@/components/product/ComponentSelector";
 
 export function AddToCartForm({ product }: { product: Product }) {
+  if (product.category.type === "SET") {
+    return <SetAddToCartForm product={product} />;
+  }
+  return <SimpleAddToCartForm product={product} />;
+}
+
+function SimpleAddToCartForm({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
 
   function handleAdd() {
     if (!selectedSize) return;
-    addItem(product, selectedSize);
+    addItem(product, { size: selectedSize });
     openDrawer();
   }
 
@@ -67,6 +76,61 @@ export function AddToCartForm({ product }: { product: Product }) {
           className="w-full"
         >
           {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
+        </Button>
+      </div>
+
+      <SizeGuideModal isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />
+    </div>
+  );
+}
+
+function SetAddToCartForm({ product }: { product: Product }) {
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const { addItem, openDrawer } = useCart();
+  const { components, selections, setSelection, complete, buildCartSelections } =
+    useSetSelections(product.components);
+
+  function handleAdd() {
+    if (!complete) return;
+    addItem(product, { selections: buildCartSelections() });
+    openDrawer();
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+          Elige talla y color de cada prenda
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowSizeGuide(true)}
+          className="text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+        >
+          Guía de tallas
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-5">
+        {components.map((component) => (
+          <ComponentSelector
+            key={component.id}
+            component={component}
+            selection={selections[component.id] ?? { size: null }}
+            onChange={(next) => setSelection(component.id, next)}
+          />
+        ))}
+      </div>
+
+      {product.madeToOrder && !isSoldOut(product) && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Hecho sobre pedido · tiempo de elaboración de 3 a 4 semanas.
+        </p>
+      )}
+
+      <div className="mt-6">
+        <Button type="button" onClick={handleAdd} disabled={!complete} className="w-full">
+          {isSoldOut(product) ? "Agotado" : complete ? "Agregar al carrito" : "Elige talla y color"}
         </Button>
       </div>
 

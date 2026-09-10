@@ -6,6 +6,7 @@ import { useCart } from "@/context/cart-context";
 import { formatCurrency } from "@/lib/format-currency";
 import { buttonClasses } from "@/components/ui/Button";
 import { CartLineItem } from "@/components/cart/CartLineItem";
+import { cartItemKey } from "@/lib/cart-item-key";
 
 export default function CarritoPage() {
   const { items, subtotal } = useCart();
@@ -35,7 +36,7 @@ export default function CarritoPage() {
       <ul className="mt-8 flex flex-col divide-y divide-sand">
         <AnimatePresence mode="popLayout" initial={false}>
           {items.map((item) => (
-            <CartLineItem key={`${item.product.id}-${item.size}`} item={item} />
+            <CartLineItem key={cartItemKey(item)} item={item} />
           ))}
         </AnimatePresence>
       </ul>

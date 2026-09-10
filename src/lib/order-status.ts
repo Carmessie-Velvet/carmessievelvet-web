@@ -8,4 +8,5 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   DELIVERED: "Entregado",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
+  PARTIALLY_REFUNDED: "Reembolsado parcialmente",
 };
