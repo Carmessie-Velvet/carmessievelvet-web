@@ -50,6 +50,8 @@ export interface Product {
   currency: "MXN";
   category: Category;
   images: ProductImage[];
+  /** A product has at most one video — `null` if none has been uploaded (no placeholder). */
+  videoUrl: string | null;
   variants: ProductVariant[];
   /** Only populated for `category.type === "SET"` — empty for a SIMPLE product. */
   components: ProductComponent[];
