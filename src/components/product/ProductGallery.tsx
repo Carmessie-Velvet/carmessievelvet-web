@@ -2,7 +2,34 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import type { ProductImage } from "@/types/product";
+
+const CROSSFADE = { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const };
+
+function GallerySlot({ image, priority }: { image: ProductImage; priority?: boolean }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={image.src}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={CROSSFADE}
+        className="absolute inset-0"
+      >
+        <Image
+          src={image.src}
+          alt={image.alt}
+          fill
+          sizes="(min-width: 1024px) 22vw, 45vw"
+          className="object-cover"
+          priority={priority}
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export function ProductGallery({
   images,
@@ -56,33 +83,17 @@ export function ProductGallery({
               preload="auto"
               className="h-full w-full object-cover"
             />
-          ) : leftImage ? (
-            <Image
-              src={leftImage.src}
-              alt={leftImage.alt}
-              fill
-              sizes="(min-width: 1024px) 22vw, 45vw"
-              className="object-cover"
-              priority
-            />
-          ) : null}
+          ) : (
+            leftImage && <GallerySlot image={leftImage} priority />
+          )}
         </div>
         <div className="relative aspect-[4/5] overflow-hidden bg-sand">
-          {rightImage && (
-            <Image
-              src={rightImage.src}
-              alt={rightImage.alt}
-              fill
-              sizes="(min-width: 1024px) 22vw, 45vw"
-              className="object-cover"
-              priority
-            />
-          )}
+          {rightImage && <GallerySlot image={rightImage} priority />}
         </div>
       </div>
 
       {images.length > 1 && (
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {images.map((image, i) => {
             const active = videoUrl
               ? i === primaryIndex
@@ -94,7 +105,7 @@ export function ProductGallery({
                 onClick={() => setPrimaryIndex(i)}
                 aria-label={`Ver imagen ${i + 1} de ${productName}`}
                 aria-pressed={active}
-                className={`relative h-20 w-16 shrink-0 overflow-hidden bg-sand transition-opacity ${
+                className={`relative h-20 w-16 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
                   active ? "opacity-100 ring-2 ring-ink" : "opacity-70 hover:opacity-100"
                 }`}
               >
