@@ -7,8 +7,15 @@ import { Reveal } from "@/components/ui/Reveal";
 
 // A drag past this many pixels counts as "scrolling", not "tapping the
 // tile" — past it, the click that would otherwise follow pointerup is
-// suppressed so dragging the rail never accidentally navigates.
-const DRAG_CLICK_THRESHOLD = 6;
+// suppressed so dragging the rail never accidentally navigates. Needs to
+// stay well above ordinary click/tap jitter: a real click's mousedown and
+// mouseup routinely land several pixels apart (more on touch, where the
+// contact point shifts as a finger lifts) even with zero intent to drag —
+// at 6px that jitter alone was silently eating real taps (reported live:
+// clicking a video tile did nothing). An actual drag-to-scroll gesture
+// moves tens of pixels at minimum, so this has a lot of room before it
+// risks misreading a real drag as a tap.
+const DRAG_CLICK_THRESHOLD = 15;
 
 // Section for products with a video (client-managed, `product.videoUrl`) —
 // no title/price overlay on the tiles themselves (deliberately as bare as
