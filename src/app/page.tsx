@@ -53,7 +53,20 @@ export default async function HomePage() {
           fill
           priority
           sizes="100vw"
-          className="object-cover opacity-90"
+          // El hero es una sola imagen recortada por el admin en ~16:9 —
+          // en desktop, el contenedor (`h-[88svh]`) queda cerca de esa
+          // misma proporción, así que "center" ya encuadra bien. En un
+          // viewport angosto y muy alto (mobile), `object-cover` en
+          // "center" recorta casi todo el ancho y se queda solo con una
+          // franja vertical del centro de la foto — en un flat-lay de
+          // producto, la prenda casi nunca cae justo ahí. Este sesgo
+          // (un poco a la izquierda, un poco arriba del centro) es un
+          // punto de partida razonable para este tipo de foto, no una
+          // solución exacta por imagen — si el admin sube una portada muy
+          // distinta y se sigue viendo mal en mobile, la solución real es
+          // un recorte específico para mobile (requiere backend, ver
+          // CLAUDE.md).
+          className="object-cover object-[38%_35%] opacity-90 sm:object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/70 via-ink/25 to-transparent" />
