@@ -5,17 +5,18 @@ import Link from "next/link";
 import type { Product } from "@/types/product";
 import { Reveal } from "@/components/ui/Reveal";
 
-// A drag past this many pixels counts as "scrolling", not "tapping the
-// tile" — past it, the click that would otherwise follow pointerup is
-// suppressed so dragging the rail never accidentally navigates. Needs to
-// stay well above ordinary click/tap jitter: a real click's mousedown and
-// mouseup routinely land several pixels apart (more on touch, where the
-// contact point shifts as a finger lifts) even with zero intent to drag —
-// at 6px that jitter alone was silently eating real taps (reported live:
-// clicking a video tile did nothing). An actual drag-to-scroll gesture
-// moves tens of pixels at minimum, so this has a lot of room before it
-// risks misreading a real drag as a tap.
-const DRAG_CLICK_THRESHOLD = 15;
+// Distinguishing "tapping the tile" from "dragging the rail to scroll" by
+// distance alone kept eating real clicks (reported live, twice — first at
+// a 6px threshold, still broken at 15px): a real mousedown→mouseup or
+// touch tap routinely lands more than a few pixels apart with zero intent
+// to drag, and exactly how much varies a lot by input device (trackpad
+// tap-to-click especially). Duration is a much more reliable signal — an
+// intentional drag-to-scroll is a *sustained* motion, not an instant.
+// Below DRAG_TIME_THRESHOLD_MS, it's a click no matter how much the
+// cursor wandered; past it, fall back to distance so a genuine slow drag
+// that ends up not moving far still doesn't accidentally navigate.
+const DRAG_TIME_THRESHOLD_MS = 300;
+const DRAG_DISTANCE_THRESHOLD = 15;
 
 // Section for products with a video (client-managed, `product.videoUrl`) —
 // no title/price overlay on the tiles themselves (deliberately as bare as
@@ -27,15 +28,26 @@ const DRAG_CLICK_THRESHOLD = 15;
 // clicking and dragging with a mouse (handled below).
 export function VideoShowcase({ products }: { products: Product[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const drag = useRef({ dragging: false, startX: 0, startScrollLeft: 0, moved: 0 });
+  const drag = useRef({ dragging: false, startX: 0, startScrollLeft: 0, moved: 0, startTime: 0 });
 
   if (products.length === 0) return null;
 
+  // No setPointerCapture here on purpose — it doesn't buy much for a
+  // compact row like this (pointermove keeps bubbling from any tile inside
+  // the track regardless), and it throws in real, non-synthetic edge cases
+  // (e.g. the browser already released the pointer for another reason),
+  // which is exactly the kind of uncaught error that shouldn't be anywhere
+  // near "did the shopper's click register."
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     const track = trackRef.current;
     if (!track) return;
-    drag.current = { dragging: true, startX: e.clientX, startScrollLeft: track.scrollLeft, moved: 0 };
-    track.setPointerCapture(e.pointerId);
+    drag.current = {
+      dragging: true,
+      startX: e.clientX,
+      startScrollLeft: track.scrollLeft,
+      moved: 0,
+      startTime: performance.now(),
+    };
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
@@ -46,13 +58,14 @@ export function VideoShowcase({ products }: { products: Product[] }) {
     track.scrollLeft = drag.current.startScrollLeft - delta;
   }
 
-  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    trackRef.current?.releasePointerCapture(e.pointerId);
+  function handlePointerUp() {
     drag.current.dragging = false;
   }
 
   function handleClickCapture(e: React.MouseEvent) {
-    if (drag.current.moved > DRAG_CLICK_THRESHOLD) {
+    const elapsed = performance.now() - drag.current.startTime;
+    const wasDrag = elapsed >= DRAG_TIME_THRESHOLD_MS && drag.current.moved > DRAG_DISTANCE_THRESHOLD;
+    if (wasDrag) {
       e.preventDefault();
       e.stopPropagation();
     }
