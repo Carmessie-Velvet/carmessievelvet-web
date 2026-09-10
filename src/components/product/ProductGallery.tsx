@@ -26,10 +26,14 @@ const slideVariants = {
 function GallerySlot({
   image,
   direction,
+  delay = 0,
   priority,
 }: {
   image: ProductImage;
   direction: number;
+  /** Offsets this slot's transition from its sibling's so a pair-change
+   * reads as two photos each sliding on their own, not one fused panel. */
+  delay?: number;
   priority?: boolean;
 }) {
   return (
@@ -41,7 +45,7 @@ function GallerySlot({
         initial="enter"
         animate="center"
         exit="exit"
-        transition={SLIDE_TRANSITION}
+        transition={{ ...SLIDE_TRANSITION, delay }}
         className="absolute inset-0"
       >
         <Image
@@ -102,7 +106,7 @@ export function ProductGallery({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-px">
         <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
           {videoUrl ? (
             <video
@@ -120,7 +124,9 @@ export function ProductGallery({
           )}
         </div>
         <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
-          {rightImage && <GallerySlot image={rightImage} direction={direction} priority />}
+          {rightImage && (
+            <GallerySlot image={rightImage} direction={direction} delay={videoUrl ? 0 : 0.08} priority />
+          )}
         </div>
       </div>
 
