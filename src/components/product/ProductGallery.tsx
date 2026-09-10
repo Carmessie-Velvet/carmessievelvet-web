@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ProductImage } from "@/types/product";
 import { ImageLightbox } from "@/components/product/ImageLightbox";
+import { useDragScroll } from "@/lib/use-drag-scroll";
 
 // Portrait crop matching the reference site's own product photography
 // (measured live off marsthelabel.com's gallery: 30x45px thumbnails, a
@@ -68,6 +69,7 @@ export function ProductGallery({
   const [primaryIndex, setPrimaryIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const { trackRef, dragHandlers } = useDragScroll<HTMLDivElement>();
 
   function selectIndex(i: number) {
     setDirection(i > primaryIndex ? 1 : i < primaryIndex ? -1 : direction);
@@ -211,7 +213,11 @@ export function ProductGallery({
       )}
 
       {images.length > 1 && (
-        <div className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={trackRef}
+          {...dragHandlers}
+          className="mt-2 flex cursor-grab gap-2 overflow-x-auto [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+        >
           {images.map((image, i) => {
             const active = videoUrl
               ? i === primaryIndex
@@ -227,7 +233,14 @@ export function ProductGallery({
                   active ? "opacity-100" : "opacity-60 hover:opacity-100"
                 }`}
               >
-                <Image src={image.src} alt={image.alt} fill sizes="80px" className="object-cover" />
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  sizes="80px"
+                  draggable={false}
+                  className="object-cover"
+                />
               </button>
             );
           })}
