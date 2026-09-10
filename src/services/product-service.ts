@@ -15,6 +15,19 @@ export interface ProductListOptions {
   sortOrder?: "ASC" | "DESC";
 }
 
+export interface ProductPageOptions extends ProductListOptions {
+  page?: number;
+  limit?: number;
+}
+
+export interface ProductPage {
+  items: Product[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 /**
  * Contract for reading catalog data. `RestProductService` talks to the real
  * `carmessievelvet-api` storefront endpoints (`/store/*`, public, no auth).
@@ -28,6 +41,7 @@ export interface CouponPreviewLine {
 
 export interface ProductService {
   getAll(options?: ProductListOptions): Promise<Product[]>;
+  getPage(options?: ProductPageOptions): Promise<ProductPage>;
   getNewArrivals(limit?: number): Promise<Product[]>;
   getBySlug(slug: string): Promise<Product | null>;
   getCategories(): Promise<Category[]>;
@@ -172,17 +186,25 @@ export function mapProduct(api: ApiStoreProduct, isNew = false): Product {
 }
 
 export class RestProductService implements ProductService {
-  async getAll(options: ProductListOptions = {}): Promise<Product[]> {
+  // Shared by `getAll` (which just wants every match, in one big page) and
+  // `getPage` (the real, user-facing pagination) — same filters, same
+  // category-slug-to-id resolution, only the page/limit sent to the API
+  // differs.
+  private async fetchPage(options: ProductPageOptions): Promise<ProductPage> {
+    const limit = options.limit ?? 20;
     let categoryId: string | undefined;
     if (options.categorySlug) {
       const rawCategories = await apiFetch<ApiCategory[]>("/store/categories");
       categoryId = rawCategories.find(
         (c) => mapCategory(c).slug === options.categorySlug
       )?.id;
-      if (!categoryId) return [];
+      if (!categoryId) {
+        return { items: [], total: 0, page: options.page ?? 1, limit, totalPages: 0 };
+      }
     }
 
-    const params = new URLSearchParams({ limit: "100" });
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (options.page) params.set("page", String(options.page));
     if (categoryId) params.set("categoryId", categoryId);
     if (options.search) params.set("search", options.search);
     if (options.size) params.set("size", options.size);
@@ -192,10 +214,25 @@ export class RestProductService implements ProductService {
     if (options.sortBy) params.set("sortBy", options.sortBy);
     if (options.sortOrder) params.set("sortOrder", options.sortOrder);
 
-    const page = await apiFetch<ApiPaginated<ApiStoreProduct>>(
+    const result = await apiFetch<ApiPaginated<ApiStoreProduct>>(
       `/store/products?${params.toString()}`
     );
-    return page.items.map((item) => mapProduct(item));
+    return {
+      items: result.items.map((item) => mapProduct(item)),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+    };
+  }
+
+  async getAll(options: ProductListOptions = {}): Promise<Product[]> {
+    const page = await this.fetchPage({ ...options, limit: 100 });
+    return page.items;
+  }
+
+  async getPage(options: ProductPageOptions = {}): Promise<ProductPage> {
+    return this.fetchPage(options);
   }
 
   async getNewArrivals(limit = 4): Promise<Product[]> {
