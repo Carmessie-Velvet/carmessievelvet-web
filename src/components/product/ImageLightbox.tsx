@@ -6,6 +6,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import type { ProductImage } from "@/types/product";
 
+// The image box is sized off viewport *height* (`h-[70vh]` + `aspect-[2/3]`),
+// but `sizes` only understands viewport *width* — there's no clean vw
+// expression for a height-derived box, so this is a reasonable fixed
+// estimate of the widest the box ever renders at. What matters more than
+// precision here is that every <Image> in this file (main + both preloads)
+// uses the exact same value, so they all resolve to the same optimized
+// `/_next/image?...` URL and a preload actually warms the cache the real
+// display request will hit.
+const LIGHTBOX_IMAGE_SIZES = "600px";
+
 // Full-screen viewer for "let me see that image big" — separate from the
 // gallery's own pair/video logic above the fold: always cycles the whole
 // `images` array regardless of how the gallery is currently paired, since
@@ -53,7 +63,10 @@ export function ImageLightbox({
           aria-label={`Imagen ${index! + 1} de ${images.length} de ${productName}`}
           onClick={onClose}
         >
-          <div className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6">
+          <div
+            className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <span className="text-xs font-medium uppercase tracking-[0.14em] text-cream-soft/70">
               {index! + 1} / {images.length}
             </span>
@@ -69,21 +82,59 @@ export function ImageLightbox({
             </button>
           </div>
 
-          <div className="relative flex-1 px-4 pb-2 sm:px-10" onClick={(e) => e.stopPropagation()}>
-            <Image
-              src={images[index!].src}
-              alt={images[index!].alt}
-              fill
-              sizes="100vw"
-              className="object-contain"
-              priority
-            />
+          {/* No stopPropagation here on purpose — clicking the dark area
+              around the image (this whole row, minus the image box and the
+              arrow buttons below, which each stop their own click) closes
+              the viewer, per feedback that the empty space felt dead. */}
+          <div className="relative flex flex-1 items-center justify-center px-4 pb-2 sm:px-10">
+            <div
+              className="relative h-[70vh] max-h-full w-auto max-w-full aspect-[2/3]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={images[index!].src}
+                alt={images[index!].alt}
+                fill
+                sizes={LIGHTBOX_IMAGE_SIZES}
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            {/* Preloaded eagerly (priority skips the lazy/IntersectionObserver
+                gate a hidden element would otherwise never satisfy, and
+                `fill` + the same `sizes` as the visible image means this
+                requests the exact same optimized URL) so the neighbor is
+                already cached by the time the shopper clicks — the visible
+                swap felt slow purely because it fetched a full-size image
+                from scratch on every click. */}
+            {images.length > 1 && (
+              <div className="relative hidden h-[70vh] aspect-[2/3]" aria-hidden="true">
+                <Image
+                  src={images[(index! - 1 + images.length) % images.length].src}
+                  alt=""
+                  fill
+                  sizes={LIGHTBOX_IMAGE_SIZES}
+                  priority
+                />
+                <Image
+                  src={images[(index! + 1) % images.length].src}
+                  alt=""
+                  fill
+                  sizes={LIGHTBOX_IMAGE_SIZES}
+                  priority
+                />
+              </div>
+            )}
 
             {images.length > 1 && (
               <>
                 <button
                   type="button"
-                  onClick={() => onNavigate((index! - 1 + images.length) % images.length)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate((index! - 1 + images.length) % images.length);
+                  }}
                   aria-label="Imagen anterior"
                   className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-cream-soft/80 transition-colors hover:text-cream-soft sm:left-3"
                 >
@@ -93,7 +144,10 @@ export function ImageLightbox({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigate((index! + 1) % images.length)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate((index! + 1) % images.length);
+                  }}
                   aria-label="Siguiente imagen"
                   className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-cream-soft/80 transition-colors hover:text-cream-soft sm:right-3"
                 >

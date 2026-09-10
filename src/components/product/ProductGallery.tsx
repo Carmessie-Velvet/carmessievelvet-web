@@ -107,7 +107,12 @@ export function ProductGallery({
   }
 
   return (
-    <div>
+    // `min-w-0` overrides the grid item's default `min-width: auto` — without
+    // it, the thumbnail row's `overflow-x-auto` never actually gets to
+    // constrain anything: the row (and everything above it) grows to fit
+    // every thumbnail instead of scrolling, which was overflowing the whole
+    // page sideways on mobile (a real, reported layout bug, not cosmetic).
+    <div className="min-w-0">
       {videoUrl ? (
         // Video pinned left, never slides — only the right image changes,
         // so it's a single sliding box, nothing to keep "together" here.
@@ -219,7 +224,7 @@ export function ProductGallery({
                 aria-label={`Ver imagen ${i + 1} de ${productName}`}
                 aria-pressed={active}
                 className={`relative ${IMAGE_RATIO} w-20 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
-                  active ? "opacity-100 ring-2 ring-ink" : "opacity-70 hover:opacity-100"
+                  active ? "opacity-100" : "opacity-60 hover:opacity-100"
                 }`}
               >
                 <Image src={image.src} alt={image.alt} fill sizes="80px" className="object-cover" />
