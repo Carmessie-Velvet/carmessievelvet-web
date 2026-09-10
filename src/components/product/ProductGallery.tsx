@@ -5,17 +5,43 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ProductImage } from "@/types/product";
 
-const CROSSFADE = { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const };
+// Portrait crop matching the reference site's own product photography
+// (measured live off marsthelabel.com's gallery: 30x45px thumbnails, a
+// clean 2:3) — taller than the old 4:5 so the garment actually reads
+// instead of looking cropped/squashed.
+const GALLERY_RATIO = "aspect-[2/3]";
 
-function GallerySlot({ image, priority }: { image: ProductImage; priority?: boolean }) {
+const SLIDE_TRANSITION = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const };
+
+// A swipe, not a crossfade: the new image slides in from the side the
+// shopper is "moving toward" while the old one slides out the opposite
+// side, both at once (no `mode="wait"` — that would stall the enter until
+// the exit finishes, losing the sliding-past feel).
+const slideVariants = {
+  enter: (direction: number) => ({ x: direction >= 0 ? "100%" : "-100%" }),
+  center: { x: 0 },
+  exit: (direction: number) => ({ x: direction >= 0 ? "-100%" : "100%" }),
+};
+
+function GallerySlot({
+  image,
+  direction,
+  priority,
+}: {
+  image: ProductImage;
+  direction: number;
+  priority?: boolean;
+}) {
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence custom={direction} initial={false}>
       <motion.div
         key={image.src}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={CROSSFADE}
+        custom={direction}
+        variants={slideVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={SLIDE_TRANSITION}
         className="absolute inset-0"
       >
         <Image
@@ -41,13 +67,19 @@ export function ProductGallery({
   productName: string;
 }) {
   const [primaryIndex, setPrimaryIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+
+  function selectIndex(i: number) {
+    setDirection(i > primaryIndex ? 1 : i < primaryIndex ? -1 : direction);
+    setPrimaryIndex(i);
+  }
 
   // Trivial case (the old, simple layout): a single image and no video —
   // nothing to pick between, so skip the interactive gallery entirely.
   if (!videoUrl && images.length <= 1) {
     const only = images[0];
     return only ? (
-      <div className="relative aspect-[4/5] overflow-hidden bg-sand">
+      <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
         <Image
           src={only.src}
           alt={only.alt}
@@ -71,7 +103,7 @@ export function ProductGallery({
   return (
     <div>
       <div className="grid grid-cols-2 gap-2">
-        <div className="relative aspect-[4/5] overflow-hidden bg-sand">
+        <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
           {videoUrl ? (
             <video
               src={videoUrl}
@@ -84,11 +116,11 @@ export function ProductGallery({
               className="h-full w-full object-cover"
             />
           ) : (
-            leftImage && <GallerySlot image={leftImage} priority />
+            leftImage && <GallerySlot image={leftImage} direction={direction} priority />
           )}
         </div>
-        <div className="relative aspect-[4/5] overflow-hidden bg-sand">
-          {rightImage && <GallerySlot image={rightImage} priority />}
+        <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
+          {rightImage && <GallerySlot image={rightImage} direction={direction} priority />}
         </div>
       </div>
 
@@ -102,10 +134,10 @@ export function ProductGallery({
               <button
                 key={image.src}
                 type="button"
-                onClick={() => setPrimaryIndex(i)}
+                onClick={() => selectIndex(i)}
                 aria-label={`Ver imagen ${i + 1} de ${productName}`}
                 aria-pressed={active}
-                className={`relative h-20 w-16 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
+                className={`relative h-24 w-16 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
                   active ? "opacity-100 ring-2 ring-ink" : "opacity-70 hover:opacity-100"
                 }`}
               >
