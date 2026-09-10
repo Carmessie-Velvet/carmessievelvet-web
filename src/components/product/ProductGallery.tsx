@@ -9,11 +9,14 @@ import type { ProductImage } from "@/types/product";
 // (measured live off marsthelabel.com's gallery: 30x45px thumbnails, a
 // clean 2:3) — taller than the old 4:5 so the garment actually reads
 // instead of looking cropped/squashed.
-const GALLERY_RATIO = "aspect-[2/3]";
+const IMAGE_RATIO = "aspect-[2/3]";
+// Two 2:3 columns side by side (gap is a hairline, negligible for the ratio
+// math) — width doubles, height doesn't, so the pair's own box is 4:3.
+const PAIR_RATIO = "aspect-[4/3]";
 
 const SLIDE_TRANSITION = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const };
 
-// A swipe, not a crossfade: the new image slides in from the side the
+// A swipe, not a crossfade: the new content slides in from the side the
 // shopper is "moving toward" while the old one slides out the opposite
 // side, both at once (no `mode="wait"` — that would stall the enter until
 // the exit finishes, losing the sliding-past feel).
@@ -23,39 +26,30 @@ const slideVariants = {
   exit: (direction: number) => ({ x: direction >= 0 ? "-100%" : "100%" }),
 };
 
-function GallerySlot({
-  image,
+function SlidingBox({
+  slideKey,
   direction,
-  delay = 0,
-  priority,
+  className,
+  children,
 }: {
-  image: ProductImage;
+  slideKey: string;
   direction: number;
-  /** Offsets this slot's transition from its sibling's so a pair-change
-   * reads as two photos each sliding on their own, not one fused panel. */
-  delay?: number;
-  priority?: boolean;
+  className: string;
+  children: React.ReactNode;
 }) {
   return (
     <AnimatePresence custom={direction} initial={false}>
       <motion.div
-        key={image.src}
+        key={slideKey}
         custom={direction}
         variants={slideVariants}
         initial="enter"
         animate="center"
         exit="exit"
-        transition={{ ...SLIDE_TRANSITION, delay }}
-        className="absolute inset-0"
+        transition={SLIDE_TRANSITION}
+        className={className}
       >
-        <Image
-          src={image.src}
-          alt={image.alt}
-          fill
-          sizes="(min-width: 1024px) 22vw, 45vw"
-          className="object-cover"
-          priority={priority}
-        />
+        {children}
       </motion.div>
     </AnimatePresence>
   );
@@ -83,7 +77,7 @@ export function ProductGallery({
   if (!videoUrl && images.length <= 1) {
     const only = images[0];
     return only ? (
-      <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
+      <div className={`relative ${IMAGE_RATIO} overflow-hidden bg-sand`}>
         <Image
           src={only.src}
           alt={only.alt}
@@ -96,19 +90,13 @@ export function ProductGallery({
     ) : null;
   }
 
-  // With a video, it's pinned left and never changes — the right slot picks
-  // through `images`. Without one, clicking a thumbnail pairs it with the
-  // next image (wrapping past the end) so the layout always shows two.
-  const rightImage = videoUrl
-    ? images[primaryIndex]
-    : images[(primaryIndex + 1) % images.length];
-  const leftImage = videoUrl ? undefined : images[primaryIndex];
-
   return (
     <div>
-      <div className="grid grid-cols-2 gap-px">
-        <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
-          {videoUrl ? (
+      {videoUrl ? (
+        // Video pinned left, never slides — only the right image changes,
+        // so it's a single sliding box, nothing to keep "together" here.
+        <div className="grid grid-cols-2 gap-px">
+          <div className={`relative ${IMAGE_RATIO} overflow-hidden bg-sand`}>
             <video
               src={videoUrl}
               poster={images[0]?.src}
@@ -119,19 +107,71 @@ export function ProductGallery({
               preload="auto"
               className="h-full w-full object-cover"
             />
-          ) : (
-            leftImage && <GallerySlot image={leftImage} direction={direction} priority />
-          )}
+          </div>
+          <div className={`relative ${IMAGE_RATIO} overflow-hidden bg-sand`}>
+            {images[primaryIndex] && (
+              <SlidingBox
+                slideKey={images[primaryIndex].src}
+                direction={direction}
+                className="absolute inset-0"
+              >
+                <Image
+                  src={images[primaryIndex].src}
+                  alt={images[primaryIndex].alt}
+                  fill
+                  sizes="(min-width: 1024px) 22vw, 45vw"
+                  className="object-cover"
+                  priority
+                />
+              </SlidingBox>
+            )}
+          </div>
         </div>
-        <div className={`relative ${GALLERY_RATIO} overflow-hidden bg-sand`}>
-          {rightImage && (
-            <GallerySlot image={rightImage} direction={direction} delay={videoUrl ? 0 : 0.08} priority />
-          )}
+      ) : (
+        // No video: clicking a thumbnail pairs it with the next image
+        // (wrapping past the end). The pair is ONE sliding unit — both
+        // images move together as a single block, not as two elements
+        // independently animating — so they're rendered inside one
+        // AnimatePresence/motion.div keyed by the pair, with the grid
+        // split living *inside* that single sliding box.
+        <div className={`relative ${PAIR_RATIO} overflow-hidden bg-sand`}>
+          {(() => {
+            const left = images[primaryIndex];
+            const right = images[(primaryIndex + 1) % images.length];
+            return (
+              <SlidingBox
+                slideKey={`${left.src}|${right.src}`}
+                direction={direction}
+                className="absolute inset-0 grid grid-cols-2 gap-px"
+              >
+                <div className="relative overflow-hidden bg-sand">
+                  <Image
+                    src={left.src}
+                    alt={left.alt}
+                    fill
+                    sizes="(min-width: 1024px) 22vw, 45vw"
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+                <div className="relative overflow-hidden bg-sand">
+                  <Image
+                    src={right.src}
+                    alt={right.alt}
+                    fill
+                    sizes="(min-width: 1024px) 22vw, 45vw"
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+              </SlidingBox>
+            );
+          })()}
         </div>
-      </div>
+      )}
 
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {images.map((image, i) => {
             const active = videoUrl
               ? i === primaryIndex
@@ -143,11 +183,11 @@ export function ProductGallery({
                 onClick={() => selectIndex(i)}
                 aria-label={`Ver imagen ${i + 1} de ${productName}`}
                 aria-pressed={active}
-                className={`relative h-24 w-16 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
+                className={`relative ${IMAGE_RATIO} w-20 shrink-0 overflow-hidden bg-sand transition-opacity duration-300 ${
                   active ? "opacity-100 ring-2 ring-ink" : "opacity-70 hover:opacity-100"
                 }`}
               >
-                <Image src={image.src} alt={image.alt} fill sizes="64px" className="object-cover" />
+                <Image src={image.src} alt={image.alt} fill sizes="80px" className="object-cover" />
               </button>
             );
           })}
