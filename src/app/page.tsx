@@ -15,10 +15,12 @@ const categoryPreview: Record<string, string> = {
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [newArrivals, categories] = await Promise.all([
+  const [newArrivals, categories, allProducts] = await Promise.all([
     productService.getNewArrivals(4),
     productService.getCategories(),
+    productService.getAll(),
   ]);
+  const videoProducts = allProducts.filter((product) => product.videoUrl);
 
   return (
     <div>
@@ -104,7 +106,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <VideoShowcase />
+      <VideoShowcase products={videoProducts} />
     </div>
   );
 }

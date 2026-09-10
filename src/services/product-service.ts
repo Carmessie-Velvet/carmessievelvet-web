@@ -98,6 +98,8 @@ export interface ApiStoreProduct {
   category?: ApiCategory;
   tags: ApiTag[];
   images: string[];
+  /** No placeholder (unlike `images`) — `null` until an admin uploads one. */
+  videoUrl: string | null;
   availableSizes: Size[];
   inStock: boolean;
   madeToOrder: boolean;
@@ -156,6 +158,7 @@ export function mapProduct(api: ApiStoreProduct, isNew = false): Product {
     currency: "MXN",
     category: mapCategory(api.category),
     images: mapImages(api.images, api.name),
+    videoUrl: api.videoUrl ?? null,
     variants: ALL_SIZES.map((size) => ({
       size,
       inStock: api.availableSizes.includes(size),

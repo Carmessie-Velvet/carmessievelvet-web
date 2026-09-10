@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { productService } from "@/services/product-service";
@@ -7,6 +6,7 @@ import { discountPercent } from "@/lib/discount";
 import { AddToCartForm } from "@/components/product/AddToCartForm";
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { DiscountBadge } from "@/components/product/DiscountBadge";
+import { ProductGallery } from "@/components/product/ProductGallery";
 
 // Catalog data (price, stock) is live in the real API — render on demand
 // with a short cache instead of pre-generating every product at build time.
@@ -36,23 +36,7 @@ export default async function ProductPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-          {product.images.map((image) => (
-            <div
-              key={image.src}
-              className="relative aspect-[4/5] overflow-hidden bg-sand first:col-span-2 lg:first:col-span-1"
-            >
-              <Image
-                src={image.src}
-                alt={image.alt}
-                fill
-                sizes="(min-width: 1024px) 45vw, 100vw"
-                className="object-cover"
-                priority
-              />
-            </div>
-          ))}
-        </div>
+        <ProductGallery images={product.images} videoUrl={product.videoUrl} productName={product.name} />
 
         <div className="lg:sticky lg:top-24 lg:self-start">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
