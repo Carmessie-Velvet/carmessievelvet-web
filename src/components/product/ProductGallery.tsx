@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ProductImage } from "@/types/product";
+import { ImageLightbox } from "@/components/product/ImageLightbox";
 
 // Portrait crop matching the reference site's own product photography
 // (measured live off marsthelabel.com's gallery: 30x45px thumbnails, a
@@ -66,6 +67,7 @@ export function ProductGallery({
 }) {
   const [primaryIndex, setPrimaryIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   function selectIndex(i: number) {
     setDirection(i > primaryIndex ? 1 : i < primaryIndex ? -1 : direction);
@@ -77,16 +79,30 @@ export function ProductGallery({
   if (!videoUrl && images.length <= 1) {
     const only = images[0];
     return only ? (
-      <div className={`relative ${IMAGE_RATIO} overflow-hidden bg-sand`}>
-        <Image
-          src={only.src}
-          alt={only.alt}
-          fill
-          sizes="(min-width: 1024px) 45vw, 100vw"
-          className="object-cover"
-          priority
+      <>
+        <button
+          type="button"
+          onClick={() => setLightboxIndex(0)}
+          aria-label={`Ver imagen de ${productName} en grande`}
+          className={`relative block w-full ${IMAGE_RATIO} cursor-zoom-in overflow-hidden bg-sand`}
+        >
+          <Image
+            src={only.src}
+            alt={only.alt}
+            fill
+            sizes="(min-width: 1024px) 45vw, 100vw"
+            className="object-cover"
+            priority
+          />
+        </button>
+        <ImageLightbox
+          images={images}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+          productName={productName}
         />
-      </div>
+      </>
     ) : null;
   }
 
@@ -115,14 +131,21 @@ export function ProductGallery({
                 direction={direction}
                 className="absolute inset-0"
               >
-                <Image
-                  src={images[primaryIndex].src}
-                  alt={images[primaryIndex].alt}
-                  fill
-                  sizes="(min-width: 1024px) 22vw, 45vw"
-                  className="object-cover"
-                  priority
-                />
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(primaryIndex)}
+                  aria-label={`Ver imagen de ${productName} en grande`}
+                  className="relative block h-full w-full cursor-zoom-in"
+                >
+                  <Image
+                    src={images[primaryIndex].src}
+                    alt={images[primaryIndex].alt}
+                    fill
+                    sizes="(min-width: 1024px) 22vw, 45vw"
+                    className="object-cover"
+                    priority
+                  />
+                </button>
               </SlidingBox>
             )}
           </div>
@@ -136,15 +159,22 @@ export function ProductGallery({
         // split living *inside* that single sliding box.
         <div className={`relative ${PAIR_RATIO} overflow-hidden bg-sand`}>
           {(() => {
-            const left = images[primaryIndex];
-            const right = images[(primaryIndex + 1) % images.length];
+            const leftIndex = primaryIndex;
+            const rightIndex = (primaryIndex + 1) % images.length;
+            const left = images[leftIndex];
+            const right = images[rightIndex];
             return (
               <SlidingBox
                 slideKey={`${left.src}|${right.src}`}
                 direction={direction}
                 className="absolute inset-0 grid grid-cols-2 gap-px"
               >
-                <div className="relative overflow-hidden bg-sand">
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(leftIndex)}
+                  aria-label={`Ver imagen de ${productName} en grande`}
+                  className="relative block h-full w-full cursor-zoom-in overflow-hidden bg-sand"
+                >
                   <Image
                     src={left.src}
                     alt={left.alt}
@@ -153,8 +183,13 @@ export function ProductGallery({
                     className="object-cover"
                     priority
                   />
-                </div>
-                <div className="relative overflow-hidden bg-sand">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(rightIndex)}
+                  aria-label={`Ver imagen de ${productName} en grande`}
+                  className="relative block h-full w-full cursor-zoom-in overflow-hidden bg-sand"
+                >
                   <Image
                     src={right.src}
                     alt={right.alt}
@@ -163,7 +198,7 @@ export function ProductGallery({
                     className="object-cover"
                     priority
                   />
-                </div>
+                </button>
               </SlidingBox>
             );
           })()}
@@ -193,6 +228,14 @@ export function ProductGallery({
           })}
         </div>
       )}
+
+      <ImageLightbox
+        images={images}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onNavigate={setLightboxIndex}
+        productName={productName}
+      />
     </div>
   );
 }
