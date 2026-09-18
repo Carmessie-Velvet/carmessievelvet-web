@@ -127,6 +127,7 @@ export default function CheckoutPage() {
   const [shippingMethodCode, setShippingMethodCode] = useState<string | null>(null);
   const selectedShipping =
     shippingMethods?.find((method) => method.code === shippingMethodCode) ?? null;
+  const hasMadeToOrderItems = items.some((item) => item.product.madeToOrder);
 
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[] | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
@@ -682,6 +683,19 @@ export default function CheckoutPage() {
                 ))}
               </div>
             )}
+
+            {hasMadeToOrderItems && (
+              <div className="mt-4 border border-sand bg-cream-soft px-4 py-3.5 text-sm text-ink">
+                <p className="font-medium">Tu pedido incluye piezas hechas sobre pedido.</p>
+                <p className="mt-1 text-ink-muted">
+                  Antes de que salga, considera 3 a 4 semanas de elaboración
+                  {selectedShipping?.description
+                    ? ` — más el tiempo de envío (${selectedShipping.description})`
+                    : ", además del tiempo de envío"}
+                  . El tiempo de envío empieza a contar hasta que tu pedido esté listo.
+                </p>
+              </div>
+            )}
           </section>
 
           {isAuthenticated && savedMethods && savedMethods.length === 0 && (
@@ -982,7 +996,6 @@ function PaymentStep({
   const addressSummary = `${address.fullName} — ${address.street} ${address.extNumber}${
     address.intNumber ? `, Int. ${address.intNumber}` : ""
   }, ${address.suburb}, ${address.city}, ${address.state} ${address.postalCode}`;
-  const hasMadeToOrderItems = order.items.some((item) => item.madeToOrder);
 
   const stripePromise = useMemo(
     () => loadStripe(order.publishableKey),
@@ -995,25 +1008,7 @@ function PaymentStep({
 
       <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
         <div className="lg:order-1">
-          <div className="mb-4 flex items-center gap-2.5">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-semibold text-cream-soft">
-              3
-            </span>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink">Pago</p>
-          </div>
-
-          {hasMadeToOrderItems && (
-            <div className="mb-5 border border-sand bg-cream-soft px-4 py-3.5 text-sm text-ink">
-              <p className="font-medium">Tu pedido incluye piezas hechas sobre pedido.</p>
-              <p className="mt-1 text-ink-muted">
-                Antes de que salga, considera 3 a 4 semanas de elaboración
-                {order.shippingMethodDescription
-                  ? ` — más el tiempo de envío (${order.shippingMethodDescription})`
-                  : ", además del tiempo de envío"}
-                . El tiempo de envío empieza a contar hasta que tu pedido esté listo.
-              </p>
-            </div>
-          )}
+          <SectionTitle step={4} label="Pago" />
 
           <div className="border border-sand bg-paper p-5">
             <Elements
