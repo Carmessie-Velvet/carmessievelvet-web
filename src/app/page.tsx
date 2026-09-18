@@ -36,12 +36,30 @@ const FALLBACK_HERO: Hero = {
 // Catalog data (new arrivals, categories) is live in the real API.
 export const revalidate = 60;
 
+// `revalidate` means this page is prerendered at build time and refetched
+// server-side after that — a transient API outage at either moment
+// shouldn't take down the *entire* deploy (Vercel fails the whole build if
+// any of these throws during prerendering) just because one catalog call
+// couldn't reach the backend. Each fetch degrades to an empty result on
+// its own instead of rejecting the whole `Promise.all` — same philosophy
+// as `FALLBACK_HERO` below (never let missing data crash the homepage),
+// just extended to the other three calls. Logged so a real outage still
+// shows up in Vercel's build/runtime logs instead of silently vanishing.
+async function safeFetch<T>(promise: Promise<T>, fallback: T, label: string): Promise<T> {
+  try {
+    return await promise;
+  } catch (error) {
+    console.error(`HomePage: ${label} failed, falling back`, error);
+    return fallback;
+  }
+}
+
 export default async function HomePage() {
   const [newArrivals, categories, allProducts, heroes] = await Promise.all([
-    productService.getNewArrivals(4),
-    productService.getCategories(),
-    productService.getAll(),
-    heroService.getActive(),
+    safeFetch(productService.getNewArrivals(4), [], "getNewArrivals"),
+    safeFetch(productService.getCategories(), [], "getCategories"),
+    safeFetch(productService.getAll(), [], "getAll"),
+    safeFetch(heroService.getActive(), [], "heroService.getActive"),
   ]);
   const videoProducts = allProducts.filter((product) => product.videoUrl);
   // `GET /store/hero` is a catalog (several active heroes = a carousel per
