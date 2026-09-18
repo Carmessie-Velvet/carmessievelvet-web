@@ -13,8 +13,17 @@ export interface Hero {
   buttonLabel: string | null;
   /** Relative path only (the API rejects absolute URLs) — safe to use as a Link href. */
   buttonPath: string | null;
+  /** Desktop, ~16:9. */
   imageUrl: string;
   imageWidth: number;
   imageHeight: number;
+  /**
+   * Mobile, ~4:5 — a separate crop the admin uploads on purpose, not a CSS
+   * crop of `imageUrl`. `null` for a hero activated before this field
+   * existed — fall back to `imageUrl` in that case (see `page.tsx`).
+   */
+  imageMobileUrl: string | null;
+  imageMobileWidth: number | null;
+  imageMobileHeight: number | null;
   sortOrder: number;
 }
