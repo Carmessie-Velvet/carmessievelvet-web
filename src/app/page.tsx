@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { productService } from "@/services/product-service";
 import { heroService } from "@/services/hero-service";
@@ -25,6 +25,11 @@ const FALLBACK_HERO: Hero = {
   imageUrl: "/products/corset-brocade.jpeg",
   imageWidth: 1920,
   imageHeight: 1080,
+  // No hay una versión mobile local propia — cae al mismo caso que un hero
+  // real activado antes de que este campo existiera (ver `Hero.imageMobileUrl`).
+  imageMobileUrl: null,
+  imageMobileWidth: null,
+  imageMobileHeight: null,
   sortOrder: 0,
 };
 
@@ -43,31 +48,39 @@ export default async function HomePage() {
   // the API's own docs) but there's no carousel UI here yet — only the
   // first one renders. Not a bug: today the admin only ever activates one.
   const hero = heroes[0] ?? FALLBACK_HERO;
+  const heroAlt = hero.title ?? hero.content ?? "Carmessie Velvet";
+
+  // Art direction real: dos imágenes recortadas aparte por el admin (16:9
+  // desktop, 4:5 mobile — ver HeroImageCropper en carmessievelvet-admin),
+  // no un solo archivo con un sesgo de `object-position` fijo por CSS
+  // (la solución anterior, documentada en CLAUDE.md). `<picture>` con
+  // `getImageProps` es el patrón que la propia documentación de
+  // `next/image` recomienda para esto — a diferencia de renderizar dos
+  // `<Image>` alternadas con clases `hidden`/`block`, el navegador nunca
+  // descarga la imagen que no va a usar (con `<img>`s ocultos por CSS, las
+  // dos igual se descargan). `imageMobileUrl` puede ser `null` en una
+  // portada activada antes de que este campo existiera — cae a la imagen
+  // de escritorio también en mobile en ese caso, nunca a una imagen vacía.
+  const heroImageCommon = { alt: heroAlt, fill: true, sizes: "100vw", preload: true } as const;
+  const {
+    props: { srcSet: desktopSrcSet },
+  } = getImageProps({ ...heroImageCommon, src: hero.imageUrl });
+  const {
+    props: { srcSet: mobileSrcSet, ...mobileImgProps },
+  } = getImageProps({ ...heroImageCommon, src: hero.imageMobileUrl ?? hero.imageUrl });
 
   return (
     <div>
       <section className="relative -mt-[var(--header-stack-height)] h-[88svh] min-h-[520px] w-full overflow-hidden bg-ink">
-        <Image
-          src={hero.imageUrl}
-          alt={hero.title ?? hero.content ?? "Carmessie Velvet"}
-          fill
-          priority
-          sizes="100vw"
-          // El hero es una sola imagen recortada por el admin en ~16:9 —
-          // en desktop, el contenedor (`h-[88svh]`) queda cerca de esa
-          // misma proporción, así que "center" ya encuadra bien. En un
-          // viewport angosto y muy alto (mobile), `object-cover` en
-          // "center" recorta casi todo el ancho y se queda solo con una
-          // franja vertical del centro de la foto — en un flat-lay de
-          // producto, la prenda casi nunca cae justo ahí. Este sesgo
-          // (un poco a la izquierda, un poco arriba del centro) es un
-          // punto de partida razonable para este tipo de foto, no una
-          // solución exacta por imagen — si el admin sube una portada muy
-          // distinta y se sigue viendo mal en mobile, la solución real es
-          // un recorte específico para mobile (requiere backend, ver
-          // CLAUDE.md).
-          className="object-cover object-[38%_35%] opacity-90 sm:object-center"
-        />
+        <picture>
+          {/* `sm` de Tailwind = 640px, el mismo punto de quiebre que ya usa el resto del sitio. */}
+          <source media="(min-width: 640px)" srcSet={desktopSrcSet} />
+          {/* Sin `media`: siempre hace match si el de arriba no aplicó — le da a
+              todo lo menor a 640px el srcSet completo (varias densidades) de
+              la imagen mobile, no solo la única URL plana del <img> de abajo. */}
+          <source srcSet={mobileSrcSet} />
+          <img {...mobileImgProps} alt={heroAlt} className="object-cover opacity-90" />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/70 via-ink/25 to-transparent" />
         <Reveal
