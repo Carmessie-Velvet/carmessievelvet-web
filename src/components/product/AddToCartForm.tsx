@@ -8,6 +8,7 @@ import { isSoldOut } from "@/lib/product-stock";
 import { useSetSelections } from "@/lib/use-set-selections";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
 import { ComponentSelector } from "@/components/product/ComponentSelector";
+import { ColorPicker } from "@/components/product/ColorPicker";
 
 export function AddToCartForm({ product }: { product: Product }) {
   if (product.category.type === "SET") {
@@ -17,19 +18,47 @@ export function AddToCartForm({ product }: { product: Product }) {
 }
 
 function SimpleAddToCartForm({ product }: { product: Product }) {
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
 
+  const hasColorChoice = product.colors.length > 1;
+  // Same rule as ComponentSelector: a product with no color of its own comes
+  // back as `colors: []` and every option's `color: null` — skip the color
+  // filter entirely rather than comparing against `undefined` (which would
+  // never match `null` and silently hide every size).
+  const activeColor = product.colors.length > 0 ? (selectedColor ?? product.colors[0]) : undefined;
+  const sizeOptions =
+    product.colors.length > 0
+      ? product.options.filter((option) => option.color === activeColor)
+      : product.options;
+
   function handleAdd() {
     if (!selectedSize) return;
-    addItem(product, { size: selectedSize });
+    addItem(product, { size: selectedSize, color: activeColor });
     openDrawer();
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      {hasColorChoice && (
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+            Color
+          </p>
+          <ColorPicker
+            colors={product.colors}
+            value={activeColor ?? null}
+            onChange={(color) => {
+              setSelectedColor(color);
+              setSelectedSize(null);
+            }}
+          />
+        </div>
+      )}
+
+      <div className={`flex items-center justify-between ${hasColorChoice ? "mt-4" : ""}`}>
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
           Talla
         </p>
@@ -42,22 +71,22 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
         </button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {product.variants.map((variant) => (
+        {sizeOptions.map((option) => (
           <button
-            key={variant.size}
+            key={option.size}
             type="button"
-            disabled={!variant.inStock}
-            onClick={() => setSelectedSize(variant.size)}
-            aria-pressed={selectedSize === variant.size}
+            disabled={!option.available}
+            onClick={() => setSelectedSize(option.size)}
+            aria-pressed={selectedSize === option.size}
             className={`flex h-11 w-11 items-center justify-center border text-xs font-medium uppercase tracking-wide transition-colors ${
-              !variant.inStock
+              !option.available
                 ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
-                : selectedSize === variant.size
+                : selectedSize === option.size
                   ? "border-ink bg-ink text-cream-soft"
                   : "border-sand text-ink hover:border-ink"
             }`}
           >
-            {variant.size}
+            {option.size}
           </button>
         ))}
       </div>

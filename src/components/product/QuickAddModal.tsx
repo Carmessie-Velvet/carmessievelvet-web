@@ -12,6 +12,7 @@ import { isSoldOut } from "@/lib/product-stock";
 import { discountPercent } from "@/lib/discount";
 import { DiscountBadge } from "@/components/product/DiscountBadge";
 import { ComponentSelector } from "@/components/product/ComponentSelector";
+import { ColorPicker } from "@/components/product/ColorPicker";
 import type { Product, Size } from "@/types/product";
 
 function SimpleFields({
@@ -22,37 +23,63 @@ function SimpleFields({
   onAdded: () => void;
 }) {
   const { addItem, openDrawer } = useCart();
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+
+  const hasColorChoice = product.colors.length > 1;
+  // Same rule as ComponentSelector/AddToCartForm: no color of its own means
+  // `colors: []` and every option's `color: null` — skip the filter then.
+  const activeColor = product.colors.length > 0 ? (selectedColor ?? product.colors[0]) : undefined;
+  const sizeOptions =
+    product.colors.length > 0
+      ? product.options.filter((option) => option.color === activeColor)
+      : product.options;
 
   function handleAdd() {
     if (!selectedSize) return;
-    addItem(product, { size: selectedSize });
+    addItem(product, { size: selectedSize, color: activeColor });
     onAdded();
     openDrawer();
   }
 
   return (
     <>
-      <p className="mt-6 text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+      {hasColorChoice && (
+        <>
+          <p className="mt-6 text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+            Color
+          </p>
+          <ColorPicker
+            colors={product.colors}
+            value={activeColor ?? null}
+            onChange={(color) => {
+              setSelectedColor(color);
+              setSelectedSize(null);
+            }}
+          />
+        </>
+      )}
+
+      <p className={`text-xs font-medium uppercase tracking-[0.16em] text-ink-muted ${hasColorChoice ? "mt-4" : "mt-6"}`}>
         Talla
       </p>
       <div className="mt-2.5 grid grid-cols-4 gap-1.5">
-        {product.variants.map((variant) => (
+        {sizeOptions.map((option) => (
           <button
-            key={variant.size}
+            key={option.size}
             type="button"
-            disabled={!variant.inStock}
-            onClick={() => setSelectedSize(variant.size)}
-            aria-pressed={selectedSize === variant.size}
+            disabled={!option.available}
+            onClick={() => setSelectedSize(option.size)}
+            aria-pressed={selectedSize === option.size}
             className={`h-10 border text-xs font-medium uppercase tracking-wide transition-colors ${
-              !variant.inStock
+              !option.available
                 ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
-                : selectedSize === variant.size
+                : selectedSize === option.size
                   ? "border-ink bg-ink text-cream-soft"
                   : "border-sand text-ink hover:border-ink"
             }`}
           >
-            {variant.size}
+            {option.size}
           </button>
         ))}
       </div>

@@ -14,7 +14,7 @@ import { cartItemKey } from "@/lib/cart-item-key";
 
 const STORAGE_KEY = "carmessie-velvet-cart";
 
-export type CartVariant = { size: Size } | { selections: CartSelection[] };
+export type CartVariant = { size: Size; color?: string } | { selections: CartSelection[] };
 
 type Listener = () => void;
 
