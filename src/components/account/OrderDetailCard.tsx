@@ -71,7 +71,7 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
               <div>
                 <p className="text-sm text-ink">{item.productName}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                  {formatVariantMeta(item.size, item.selections)} · Cant. {item.quantity}
+                  {formatVariantMeta(item.size, item.selections, item.color)} · Cant. {item.quantity}
                 </p>
               </div>
               <p className="text-sm font-medium text-ink">

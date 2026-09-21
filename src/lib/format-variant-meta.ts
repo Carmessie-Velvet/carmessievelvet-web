@@ -10,12 +10,13 @@ interface SelectionLike {
 
 export function formatVariantMeta(
   size: string | null | undefined,
-  selections?: SelectionLike[] | null
+  selections?: SelectionLike[] | null,
+  color?: string | null
 ): string {
   if (selections && selections.length > 0) {
     return selections
       .map((s) => `${s.componentName} ${s.size}${s.color ? ` · ${s.color}` : ""}`)
       .join(" / ");
   }
-  return `Talla ${size}`;
+  return `Talla ${size}${color ? ` · ${color}` : ""}`;
 }

@@ -36,6 +36,8 @@ export interface CouponPreviewLine {
   productId: string;
   /** Omit for a `category.type: "SET"` line — size never enters this calc. */
   size?: Size;
+  /** Which of a SIMPLE product's colors this line picked — only meaningful alongside `size`. */
+  color?: string;
   quantity: number;
 }
 
@@ -117,6 +119,10 @@ export interface ApiStoreProduct {
   availableSizes: Size[];
   inStock: boolean;
   madeToOrder: boolean;
+  /** Distinct colors offered — empty for `category.type: "SET"`, which uses `components[].colors` instead. */
+  colors: string[];
+  /** Every size × color combo, sold-out included — empty for `category.type: "SET"`. */
+  options: ApiProductComponentOption[];
   /** Empty for `category.type: "SIMPLE"` — populated only for a "SET" product. */
   components: ApiProductComponent[];
 }
@@ -177,6 +183,10 @@ export function mapProduct(api: ApiStoreProduct, isNew = false): Product {
       size,
       inStock: api.availableSizes.includes(size),
     })),
+    // Defensive `?? []` for the same POST /me/wishlist gap as `category`
+    // above — that response doesn't faithfully mirror StoreProductDto.
+    colors: api.colors ?? [],
+    options: api.options ?? [],
     components: mapComponents(api.components),
     isNew,
     // Defensive `?? false` for the same reason `category` is optional above:

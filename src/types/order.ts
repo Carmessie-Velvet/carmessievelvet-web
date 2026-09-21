@@ -52,6 +52,8 @@ export interface OrderItem {
   productImage: string;
   /** `null` for a SET line — see `selections` instead. */
   size: string | null;
+  /** Which color was purchased for this line, snapshotted at checkout — absent for a SET line (color lives per-component in `selections`) and for a line placed before this field existed. */
+  color?: string;
   /** One entry per component, only for a SET line — empty for a SIMPLE line. */
   selections: OrderItemSelection[];
   quantity: number;
@@ -139,6 +141,8 @@ export interface OrderItemInput {
   productId: string;
   /** SIMPLE product — mutually exclusive with `selections`. */
   size?: string;
+  /** Which of the product's colors this line wants — only meaningful alongside `size`. Omit when the size has only one color; required (400s naming the options) when it has more than one. */
+  color?: string;
   /** SET product — exactly one entry per component. */
   selections?: OrderItemSelectionInput[];
   quantity: number;

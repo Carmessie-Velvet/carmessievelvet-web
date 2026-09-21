@@ -53,6 +53,22 @@ export interface Product {
   /** A product has at most one video — `null` if none has been uploaded (no placeholder). */
   videoUrl: string | null;
   variants: ProductVariant[];
+  /**
+   * Distinct colors this SIMPLE product is offered in — a SIMPLE product can
+   * now offer more than one (2026-09-21), same per-variant-color pattern a
+   * SET's components already had. One entry (or empty) means there's nothing
+   * to pick, same as a component with no color of its own — see
+   * `ComponentSelector`'s own comment for why `options[].color` can still be
+   * `null` in that case. Empty for `category.type === "SET"`, which uses
+   * `components[].colors` instead.
+   */
+  colors: string[];
+  /**
+   * Every size × color combination for this product, including sold-out
+   * ones (unlike `variants`, which only reflects `availableSizes`) — same
+   * shape/purpose as `ProductComponent.options`. Empty for a SET product.
+   */
+  options: ProductComponentOption[];
   /** Only populated for `category.type === "SET"` — empty for a SIMPLE product. */
   components: ProductComponent[];
   isNew: boolean;

@@ -53,7 +53,7 @@ export function CartLineItem({
               {item.product.name}
             </Link>
             <p className="mt-1 text-xs uppercase tracking-[0.1em] text-ink-muted">
-              {formatVariantMeta(item.size, item.selections)}
+              {formatVariantMeta(item.size, item.selections, item.color)}
             </p>
           </div>
           <p className="text-sm font-medium text-ink">
