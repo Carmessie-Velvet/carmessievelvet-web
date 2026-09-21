@@ -367,7 +367,7 @@ export default function CheckoutPage() {
                   color,
                 })),
               }
-            : { size: item.size }),
+            : { size: item.size, color: item.color }),
         })),
         ...(usingSavedAddress
           ? { shippingAddressId: selectedAddressId }
@@ -414,7 +414,7 @@ export default function CheckoutPage() {
         items.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
-          ...(item.size ? { size: item.size } : {}),
+          ...(item.size ? { size: item.size, color: item.color } : {}),
         }))
       );
       setCouponPreview(result);
@@ -729,7 +729,7 @@ export default function CheckoutPage() {
               href: `/producto/${item.product.slug}`,
               image: item.product.images[0],
               name: item.product.name,
-              meta: formatVariantMeta(item.size, item.selections),
+              meta: formatVariantMeta(item.size, item.selections, item.color),
               amount: formatCurrency(item.product.price * item.quantity),
               quantity: item.quantity,
               onQuantityChange: (quantity: number) => setQuantity(key, quantity),
@@ -1032,7 +1032,7 @@ function PaymentStep({
             href: `/producto/${item.productSku.toLowerCase()}`,
             image: { src: item.productImage, alt: item.productName },
             name: item.productName,
-            meta: `${formatVariantMeta(item.size, item.selections)} · Cant. ${item.quantity}`,
+            meta: `${formatVariantMeta(item.size, item.selections, item.color)} · Cant. ${item.quantity}`,
             amount: formatCurrency(item.lineTotal, order.currency.toUpperCase()),
           }))}
           addressSummary={addressSummary}
