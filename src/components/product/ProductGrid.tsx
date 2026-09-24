@@ -11,7 +11,12 @@ export function ProductGrid({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 lg:grid-cols-4">
+    // `-mx-4 sm:mx-0` breaks out of the page's own px-4 on mobile only — full
+    // bleed to the screen edges, matching the reference site's mobile grid
+    // (images read noticeably bigger edge-to-edge than boxed in with a wide
+    // outer margin). `gap-x-px` mirrors it too: the two columns nearly touch
+    // instead of a full gap-x-4 eating into each image's width.
+    <div className="-mx-4 grid grid-cols-2 gap-x-px gap-y-10 sm:mx-0 sm:gap-x-6 lg:grid-cols-4">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
