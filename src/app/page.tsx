@@ -4,6 +4,7 @@ import { productService } from "@/services/product-service";
 import { heroService } from "@/services/hero-service";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { VideoShowcase } from "@/components/layout/VideoShowcase";
+import { BrandMessage } from "@/components/layout/BrandMessage";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import type { Hero } from "@/types/hero";
@@ -125,6 +126,8 @@ export default async function HomePage() {
           )}
         </Reveal>
       </section>
+
+      <BrandMessage />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <Reveal>
