@@ -5,6 +5,9 @@ import { heroService } from "@/services/hero-service";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { VideoShowcase } from "@/components/layout/VideoShowcase";
 import { BrandMessage } from "@/components/layout/BrandMessage";
+import { Banner } from "@/components/layout/Banner";
+import { Testimonials } from "@/components/layout/Testimonials";
+import { testimonialService } from "@/services/testimonial-service";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import type { Hero } from "@/types/hero";
@@ -34,6 +37,27 @@ const FALLBACK_HERO: Hero = {
   sortOrder: 0,
 };
 
+// Igual que FALLBACK_HERO — se usa mientras el admin no active un banner
+// (`GET /store/hero/banner` devuelve `[]` en ese caso). Imagen proporcionada
+// por la clienta específicamente para este banner (public/banner/). Un solo
+// archivo para desktop y mobile — igual que FALLBACK_HERO, `object-cover`
+// se encarga del recorte por viewport, no hace falta una segunda versión
+// hasta que el admin suba las suyas.
+const FALLBACK_BANNER: Hero = {
+  id: "fallback-banner",
+  title: null,
+  content: null,
+  buttonLabel: null,
+  buttonPath: null,
+  imageUrl: "/banner/banner-fallback.webp",
+  imageWidth: 1133,
+  imageHeight: 2000,
+  imageMobileUrl: null,
+  imageMobileWidth: null,
+  imageMobileHeight: null,
+  sortOrder: 0,
+};
+
 // Catalog data (new arrivals, categories) is live in the real API.
 export const revalidate = 60;
 
@@ -56,11 +80,13 @@ async function safeFetch<T>(promise: Promise<T>, fallback: T, label: string): Pr
 }
 
 export default async function HomePage() {
-  const [newArrivals, categories, allProducts, heroes] = await Promise.all([
+  const [newArrivals, categories, allProducts, heroes, banners, testimonials] = await Promise.all([
     safeFetch(productService.getNewArrivals(4), [], "getNewArrivals"),
     safeFetch(productService.getCategories(), [], "getCategories"),
     safeFetch(productService.getAll(), [], "getAll"),
     safeFetch(heroService.getActive(), [], "heroService.getActive"),
+    safeFetch(heroService.getActiveBanner(), [], "heroService.getActiveBanner"),
+    safeFetch(testimonialService.getActive(), [], "testimonialService.getActive"),
   ]);
   const videoProducts = allProducts.filter((product) => product.videoUrl);
   // `GET /store/hero` is a catalog (several active heroes = a carousel per
@@ -68,6 +94,10 @@ export default async function HomePage() {
   // first one renders. Not a bug: today the admin only ever activates one.
   const hero = heroes[0] ?? FALLBACK_HERO;
   const heroAlt = hero.title ?? hero.content ?? "Carmessie Velvet";
+  // Igual que el hero: `GET /store/hero/banner` es un catálogo (varios
+  // banners activos = carrusel), pero solo se pinta el primero — no hay UI
+  // de carrusel todavía porque nadie lo ha pedido.
+  const banner = banners[0] ?? FALLBACK_BANNER;
 
   // Art direction real: dos imágenes recortadas aparte por el admin (16:9
   // desktop, 4:5 mobile — ver HeroImageCropper en carmessievelvet-admin),
@@ -129,6 +159,8 @@ export default async function HomePage() {
 
       <BrandMessage />
 
+      <Banner banner={banner} />
+
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <Reveal>
           <div className="mb-8 flex items-end justify-between">
@@ -145,6 +177,8 @@ export default async function HomePage() {
           <ProductGrid products={newArrivals} />
         </Reveal>
       </section>
+
+      <Testimonials testimonials={testimonials} />
 
       <section className="bg-cream py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
