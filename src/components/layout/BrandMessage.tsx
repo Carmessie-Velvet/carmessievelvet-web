@@ -10,7 +10,7 @@ export function BrandMessage() {
     <section className="bg-paper py-10 sm:py-12">
       <Reveal className="mx-auto max-w-xl px-6 text-center sm:px-10">
         <h2 className="text-base font-black tracking-tight text-ink sm:text-lg">
-          De Carmessie para ti ♡
+          De Carmessie para ti
         </h2>
         <p className="mt-3 text-xs leading-relaxed text-ink-muted sm:text-sm">
           Somos una marca mexicana que diseña y produce sus propios corsets y
@@ -26,7 +26,7 @@ export function BrandMessage() {
           No es solo moda. Es feminidad, es confianza, es arte.
         </p>
         <p className="mt-2 text-xs text-ink-muted sm:text-sm">
-          Bienvenida a nuestro mundo. ♡
+          Bienvenida a nuestro mundo.
         </p>
       </Reveal>
     </section>
