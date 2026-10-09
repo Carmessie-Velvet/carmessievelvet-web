@@ -23,7 +23,7 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
 
-  const hasColorChoice = product.colors.length > 1;
+  const hasColorChoice = product.colors.length > 0;
   // Same rule as ComponentSelector: a product with no color of its own comes
   // back as `colors: []` and every option's `color: null` — skip the color
   // filter entirely rather than comparing against `undefined` (which would
