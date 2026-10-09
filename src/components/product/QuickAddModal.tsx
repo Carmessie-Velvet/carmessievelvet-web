@@ -26,7 +26,7 @@ function SimpleFields({
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
 
-  const hasColorChoice = product.colors.length > 1;
+  const hasColorChoice = product.colors.length > 0;
   // Same rule as ComponentSelector/AddToCartForm: no color of its own means
   // `colors: []` and every option's `color: null` — skip the filter then.
   const activeColor = product.colors.length > 0 ? (selectedColor ?? product.colors[0]) : undefined;

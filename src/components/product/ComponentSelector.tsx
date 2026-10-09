@@ -13,7 +13,10 @@ export function ComponentSelector({
   selection: ComponentSelection;
   onChange: (next: ComponentSelection) => void;
 }) {
-  const hasColorChoice = component.colors.length > 1;
+  // A single color is shown too (already selected, not clickable) so the
+  // buyer can see which color each piece is, not only when there's a choice.
+  const hasColorChoice = component.colors.length > 0;
+  const onlyOneColor = component.colors.length === 1;
   // A piece with no color of its own comes back as `colors: []` and every
   // option's `color: null` (not `undefined`) — comparing against `undefined`
   // there would never match (`null !== undefined`) and silently filter out
@@ -36,9 +39,10 @@ export function ComponentSelector({
             <button
               key={color}
               type="button"
+              disabled={onlyOneColor}
               onClick={() => onChange({ size: null, color })}
               aria-pressed={activeColor === color}
-              className={`h-9 border px-3 text-xs font-medium uppercase tracking-wide transition-colors ${
+              className={`h-9 border px-3 text-xs font-medium uppercase tracking-wide transition-colors disabled:cursor-default ${
                 activeColor === color
                   ? "border-ink bg-ink text-cream-soft"
                   : "border-sand text-ink hover:border-ink"
