@@ -28,7 +28,7 @@ import { cartItemKey } from "@/lib/cart-item-key";
 import { formatVariantMeta } from "@/lib/format-variant-meta";
 import { formatShippingMethodCode } from "@/lib/shipping-method-label";
 import { clearPendingOrder, savePendingOrder } from "@/lib/pending-order";
-import { waitForOrderPaid } from "@/lib/wait-for-order-paid";
+import { confirmOrderPayment } from "@/lib/confirm-order-payment";
 import { cardBrandLabel } from "@/lib/card-brand-label";
 import { usePurchaseWindow } from "@/lib/use-purchase-window";
 import { describeOpenDays, formatCountdown } from "@/lib/purchase-window";
@@ -435,12 +435,12 @@ export default function CheckoutPage() {
       <PaymentStep
         order={order}
         savedMethods={savedMethods}
-        onSuccess={() => {
+        onSuccess={(orderNumber) => {
           clear();
           router.push(
             isAuthenticated
               ? `/cuenta/pedidos/${order.id}`
-              : `/checkout/confirmacion?order=${encodeURIComponent(order.orderNumber)}`
+              : `/checkout/confirmacion?order=${encodeURIComponent(orderNumber)}`
           );
         }}
         onEditAddress={() => setOrder(null)}
@@ -989,7 +989,7 @@ function PaymentStep({
 }: {
   order: CreateOrderResult;
   savedMethods: PaymentMethod[] | null;
-  onSuccess: () => void;
+  onSuccess: (orderNumber: string) => void;
   onEditAddress: () => void;
 }) {
   const address = order.shippingAddress;
@@ -1072,7 +1072,7 @@ function PaymentForm({
 }: {
   order: CreateOrderResult;
   savedMethods: PaymentMethod[] | null;
-  onSuccess: () => void;
+  onSuccess: (orderNumber: string) => void;
   total: string;
 }) {
   const stripe = useStripe();
@@ -1100,6 +1100,7 @@ function PaymentForm({
     savePendingOrder({
       orderId: order.id,
       orderNumber: order.orderNumber,
+      email: order.email,
       isAuthenticated,
       publishableKey: order.publishableKey,
     });
@@ -1136,13 +1137,13 @@ function PaymentForm({
     ) {
       clearPendingOrder();
       // Stripe confirming client-side isn't the same as the order being
-      // PAID — that only happens once the payment_intent.succeeded webhook
-      // lands (docs/API-FRONTEND.md sección 7). This is that "confirmando
-      // pago" screen the docs call for, backed by a real poll instead of a
-      // fake delay.
+      // PAID, and the webhook that does that rarely beats us to this screen.
+      // So the "confirmando pago" step asks the API to settle it against
+      // Stripe right now and hands back the official CM- folio — no polling,
+      // no fixed wait. If that call fails we still move on with the TMP- one.
       setIsConfirming(true);
-      await waitForOrderPaid(order.id, isAuthenticated);
-      onSuccess();
+      const confirmed = await confirmOrderPayment(order.orderNumber, order.email);
+      onSuccess(confirmed?.orderNumber ?? order.orderNumber);
       return;
     }
 

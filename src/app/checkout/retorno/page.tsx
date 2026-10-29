@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "@/context/cart-context";
 import { buttonClasses } from "@/components/ui/Button";
+import { confirmOrderPayment } from "@/lib/confirm-order-payment";
 import { clearPendingOrder, readPendingOrder } from "@/lib/pending-order";
 
 type Status = "checking" | "failed" | "unknown";
@@ -44,7 +45,7 @@ function RetornoContent() {
 
     loadStripe(pending.publishableKey)
       .then((stripe) => stripe?.retrievePaymentIntent(clientSecret))
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled || !result || result.error || !result.paymentIntent) {
           if (!cancelled) setStatus("failed");
           return;
@@ -52,12 +53,21 @@ function RetornoContent() {
 
         const { status: paymentStatus } = result.paymentIntent;
         if (paymentStatus === "succeeded" || paymentStatus === "processing") {
+          // The webhook that assigns the official CM- folio rarely lands
+          // before the shopper is back here, so ask the API to settle the
+          // payment against Stripe now and use the folio it returns. Falls
+          // back to the TMP- one if that call fails.
+          const confirmed = await confirmOrderPayment(pending.orderNumber, pending.email);
+          if (cancelled) return;
+
           clear();
           clearPendingOrder();
           router.replace(
             pending.isAuthenticated
               ? `/cuenta/pedidos/${pending.orderId}`
-              : `/checkout/confirmacion?order=${encodeURIComponent(pending.orderNumber)}`
+              : `/checkout/confirmacion?order=${encodeURIComponent(
+                  confirmed?.orderNumber ?? pending.orderNumber
+                )}`
           );
           return;
         }
