@@ -11,16 +11,28 @@ const STEPS: { status: OrderStatus; label: string; Icon: typeof PaidIcon }[] = [
   { status: "DELIVERED", label: "Entregado", Icon: HouseIcon },
 ];
 
+// "Entregado" isn't a step the shopper sees until the order really is
+// DELIVERED. Standard shipments are moved by hand and the team doesn't mark
+// them delivered, so showing it as a pending last step made buyers think the
+// package never arrived; express ones only get there when Estafeta reports it.
+// Either way, the step appears once the status says so and not before.
+const DELIVERED_STATUS: OrderStatus = "DELIVERED";
+
 // The first step used to read "Pagado", which doubled as the only place the
 // customer saw their payment confirmed. Now that it says "En elaboración",
 // the confirmation (and the expected wait) lives in this line instead.
 const STEP_NOTES: Partial<Record<OrderStatus, string>> = {
   PAID: "Pago confirmado. Estamos elaborando tu pedido — considera 3 a 4 semanas de elaboración.",
   PROCESSING: "Tu pedido ya está elaborado y lo estamos empaquetando. Te avisaremos en cuanto salga.",
+  // "Enviado" is the last step most orders will ever show, so say it's on its way.
+  SHIPPED: "Tu pedido ya salió y va en camino.",
 };
 
 export function OrderStatusStepper({ status }: { status: OrderStatus }) {
-  const currentIndex = STEPS.findIndex((step) => step.status === status);
+  const steps = STEPS.filter(
+    (step) => step.status !== DELIVERED_STATUS || status === DELIVERED_STATUS
+  );
+  const currentIndex = steps.findIndex((step) => step.status === status);
   if (currentIndex === -1) return null;
 
   const note = STEP_NOTES[status];
@@ -32,7 +44,7 @@ export function OrderStatusStepper({ status }: { status: OrderStatus }) {
         role="list"
         aria-label="Estatus del pedido"
       >
-        {STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isReached = index <= currentIndex;
           return (
             <div key={step.status} className="flex flex-1 items-start last:flex-none">
@@ -52,7 +64,7 @@ export function OrderStatusStepper({ status }: { status: OrderStatus }) {
                   {step.label}
                 </span>
               </div>
-              {index < STEPS.length - 1 && (
+              {index < steps.length - 1 && (
                 <div
                   className={`mt-[18px] h-px flex-1 sm:mt-[22px] ${index < currentIndex ? "bg-ink" : "bg-sand"}`}
                   aria-hidden="true"
