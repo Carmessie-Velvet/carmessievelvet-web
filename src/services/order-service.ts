@@ -35,6 +35,17 @@ export interface OrderService {
    * checkout gaps) — this is wired up ready for whenever it lands.
    */
   trackGuestOrder(orderNumber: string, email: string): Promise<Order>;
+  /**
+   * Asks the API to settle a just-made payment against Stripe itself and hand
+   * back the order. The official `CM-` folio is only assigned once the payment
+   * is confirmed, and the `payment_intent.succeeded` webhook almost never
+   * lands before the shopper reaches the thank-you page — this is what lets
+   * that page show `CM-` instead of the `TMP-` placeholder. Public (guests and
+   * logged-in users alike), same order number + email pairing as tracking.
+   * If Stripe hasn't settled it yet (OXXO/SPEI, `processing`) the order comes
+   * back unchanged: still `PENDING`, still `TMP-`.
+   */
+  confirmPayment(orderNumber: string, email: string): Promise<Order>;
 }
 
 export class RestOrderService implements OrderService {
@@ -69,6 +80,13 @@ export class RestOrderService implements OrderService {
   async trackGuestOrder(orderNumber: string, email: string): Promise<Order> {
     const params = new URLSearchParams({ orderNumber, email });
     return apiFetch<Order>(`/store/orders/track?${params.toString()}`);
+  }
+
+  async confirmPayment(orderNumber: string, email: string): Promise<Order> {
+    return apiFetch<Order>("/store/orders/confirm-payment", {
+      method: "POST",
+      body: JSON.stringify({ orderNumber, email }),
+    });
   }
 }
 

@@ -8,6 +8,8 @@ const PENDING_ORDER_KEY = "carmessie-velvet-pending-order";
 export interface PendingOrder {
   orderId: string;
   orderNumber: string;
+  /** The address the order was placed with — the API pairs it with the order number to confirm the payment. */
+  email: string;
   isAuthenticated: boolean;
   publishableKey: string;
 }
