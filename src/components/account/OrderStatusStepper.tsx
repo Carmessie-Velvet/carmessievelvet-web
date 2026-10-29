@@ -5,52 +5,65 @@ import type { OrderStatus } from "@/types/order";
 // pagado→entregado flow, so the stepper just doesn't render for those (the
 // status badge above it already covers them).
 const STEPS: { status: OrderStatus; label: string; Icon: typeof PaidIcon }[] = [
-  { status: "PAID", label: "Pagado", Icon: PaidIcon },
-  { status: "PROCESSING", label: "En preparación", Icon: BoxIcon },
+  { status: "PAID", label: "En elaboración", Icon: PaidIcon },
+  { status: "PROCESSING", label: "En empaquetado", Icon: BoxIcon },
   { status: "SHIPPED", label: "Enviado", Icon: TruckIcon },
   { status: "DELIVERED", label: "Entregado", Icon: HouseIcon },
 ];
+
+// The first step used to read "Pagado", which doubled as the only place the
+// customer saw their payment confirmed. Now that it says "En elaboración",
+// the confirmation (and the expected wait) lives in this line instead.
+const STEP_NOTES: Partial<Record<OrderStatus, string>> = {
+  PAID: "Pago confirmado. Estamos elaborando tu pedido — considera 3 a 4 semanas de elaboración.",
+  PROCESSING: "Tu pedido ya está elaborado y lo estamos empaquetando. Te avisaremos en cuanto salga.",
+};
 
 export function OrderStatusStepper({ status }: { status: OrderStatus }) {
   const currentIndex = STEPS.findIndex((step) => step.status === status);
   if (currentIndex === -1) return null;
 
+  const note = STEP_NOTES[status];
+
   return (
-    <div
-      className="mt-6 flex items-start overflow-x-auto border-t border-sand pt-6"
-      role="list"
-      aria-label="Estatus del pedido"
-    >
-      {STEPS.map((step, index) => {
-        const isReached = index <= currentIndex;
-        return (
-          <div key={step.status} className="flex flex-1 items-start last:flex-none">
-            <div className="flex shrink-0 flex-col items-center gap-1.5" role="listitem">
-              <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${
-                  isReached ? "bg-ink text-cream-soft" : "bg-cream-soft text-ink-muted"
-                }`}
-              >
-                <step.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-              </span>
-              <span
-                className={`w-[4.5rem] break-words text-center text-[9px] font-medium uppercase leading-tight tracking-[0.02em] sm:text-[10px] sm:tracking-[0.06em] ${
-                  isReached ? "text-ink" : "text-ink-muted"
-                }`}
-              >
-                {step.label}
-              </span>
+    <>
+      <div
+        className="mt-6 flex items-start overflow-x-auto border-t border-sand pt-6"
+        role="list"
+        aria-label="Estatus del pedido"
+      >
+        {STEPS.map((step, index) => {
+          const isReached = index <= currentIndex;
+          return (
+            <div key={step.status} className="flex flex-1 items-start last:flex-none">
+              <div className="flex shrink-0 flex-col items-center gap-1.5" role="listitem">
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${
+                    isReached ? "bg-ink text-cream-soft" : "bg-cream-soft text-ink-muted"
+                  }`}
+                >
+                  <step.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                </span>
+                <span
+                  className={`w-[4.5rem] break-words text-center text-[9px] font-medium uppercase leading-tight tracking-[0.02em] sm:text-[10px] sm:tracking-[0.06em] ${
+                    isReached ? "text-ink" : "text-ink-muted"
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {index < STEPS.length - 1 && (
+                <div
+                  className={`mt-[18px] h-px flex-1 sm:mt-[22px] ${index < currentIndex ? "bg-ink" : "bg-sand"}`}
+                  aria-hidden="true"
+                />
+              )}
             </div>
-            {index < STEPS.length - 1 && (
-              <div
-                className={`mt-[18px] h-px flex-1 sm:mt-[22px] ${index < currentIndex ? "bg-ink" : "bg-sand"}`}
-                aria-hidden="true"
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      {note && <p className="mt-4 text-sm leading-relaxed text-ink-muted">{note}</p>}
+    </>
   );
 }
 
