@@ -25,5 +25,14 @@ export interface Hero {
   imageMobileUrl: string | null;
   imageMobileWidth: number | null;
   imageMobileHeight: number | null;
+  /**
+   * Video opcional en bucle para escritorio, que se reproduce **encima** de
+   * `imageUrl` — nunca en su lugar: la imagen es el poster mientras carga y el
+   * respaldo si no puede (o no debe) reproducirse. `null` = solo imagen.
+   * Opcional en el tipo por si el API todavía no manda el campo.
+   */
+  videoUrl?: string | null;
+  /** Igual que `videoUrl` pero para mobile (poster/respaldo: `imageMobileUrl ?? imageUrl`). Independiente del de escritorio. */
+  videoMobileUrl?: string | null;
   sortOrder: number;
 }

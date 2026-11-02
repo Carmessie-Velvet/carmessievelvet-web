@@ -1,4 +1,5 @@
 import { getImageProps } from "next/image";
+import { HeroVideo } from "@/components/layout/HeroVideo";
 import type { Hero } from "@/types/hero";
 
 /**
@@ -30,6 +31,8 @@ export function Banner({ banner }: { banner: Hero }) {
         <source srcSet={mobileSrcSet} />
         <img {...mobileImgProps} alt="Carmessie Velvet" className="object-cover" />
       </picture>
+      {/* Video opcional encima de la imagen (que queda debajo como poster/respaldo). */}
+      <HeroVideo desktopSrc={banner.videoUrl} mobileSrc={banner.videoMobileUrl} />
     </section>
   );
 }
