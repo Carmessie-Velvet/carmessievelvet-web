@@ -6,6 +6,7 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { VideoShowcase } from "@/components/layout/VideoShowcase";
 import { BrandMessage } from "@/components/layout/BrandMessage";
 import { Banner } from "@/components/layout/Banner";
+import { HeroVideo } from "@/components/layout/HeroVideo";
 import { Testimonials } from "@/components/layout/Testimonials";
 import { testimonialService } from "@/services/testimonial-service";
 import { buttonClasses } from "@/components/ui/Button";
@@ -130,6 +131,8 @@ export default async function HomePage() {
           <source srcSet={mobileSrcSet} />
           <img {...mobileImgProps} alt={heroAlt} className="object-cover opacity-90" />
         </picture>
+        {/* Video opcional encima de la imagen (que queda debajo como poster/respaldo). */}
+        <HeroVideo desktopSrc={hero.videoUrl} mobileSrc={hero.videoMobileUrl} className="opacity-90" />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/70 via-ink/25 to-transparent" />
         <Reveal
