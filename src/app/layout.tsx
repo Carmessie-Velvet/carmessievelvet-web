@@ -25,6 +25,14 @@ const SITE_NAME = "Carmessie Velvet";
 const SITE_DESCRIPTION =
   "Carmessie Velvet — corsets y sets de tiraje corto para vestir con actitud. Piezas de tiraje corto, hechas en México.";
 
+// The announcement bar (and the FAQ, the home message...) state the
+// made-to-order lead time, which depends on the date (`lib/lead-time.ts` — a
+// campaign like Buen Fin lengthens it for a few days). A page prerendered at
+// build time would keep the figure it had that day for good, so every route
+// under this layout is regenerated at most once a minute; the pages that
+// already set their own `revalidate` keep it (the lowest value wins).
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },

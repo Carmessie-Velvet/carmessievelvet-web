@@ -5,6 +5,7 @@ import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
 import { isSoldOut } from "@/lib/product-stock";
+import { formatLeadTime, getLeadTime } from "@/lib/lead-time";
 import { useSetSelections } from "@/lib/use-set-selections";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
 import { ComponentSelector } from "@/components/product/ComponentSelector";
@@ -93,7 +94,7 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
 
       {product.madeToOrder && !isSoldOut(product) && (
         <p className="mt-3 text-xs text-ink-muted">
-          Hecho sobre pedido · tiempo de elaboración de 3 a 4 semanas.
+          Hecho sobre pedido · tiempo de elaboración de {formatLeadTime(getLeadTime())}.
         </p>
       )}
 
@@ -153,7 +154,7 @@ function SetAddToCartForm({ product }: { product: Product }) {
 
       {product.madeToOrder && !isSoldOut(product) && (
         <p className="mt-3 text-xs text-ink-muted">
-          Hecho sobre pedido · tiempo de elaboración de 3 a 4 semanas.
+          Hecho sobre pedido · tiempo de elaboración de {formatLeadTime(getLeadTime())}.
         </p>
       )}
 
