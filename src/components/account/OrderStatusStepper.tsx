@@ -1,4 +1,5 @@
 import type { OrderStatus } from "@/types/order";
+import { getLeadTime } from "@/lib/lead-time";
 
 // Only the "happy path" statuses get a step — PENDING (not paid yet),
 // CANCELLED, REFUNDED and PARTIALLY_REFUNDED all break the linear
@@ -22,20 +23,37 @@ const DELIVERED_STATUS: OrderStatus = "DELIVERED";
 // customer saw their payment confirmed. Now that it says "En elaboración",
 // the confirmation (and the expected wait) lives in this line instead.
 const STEP_NOTES: Partial<Record<OrderStatus, string>> = {
-  PAID: "Pago confirmado. Estamos elaborando tu pedido — considera 3 a 4 semanas de elaboración.",
   PROCESSING: "Tu pedido ya está elaborado y lo estamos empaquetando. Te avisaremos en cuanto salga.",
   // "Enviado" is the last step most orders will ever show, so say it's on its way.
   SHIPPED: "Tu pedido ya salió y va en camino.",
 };
 
-export function OrderStatusStepper({ status }: { status: OrderStatus }) {
+// The wait is the one the order was sold with, so it's read off the order's
+// own date, not today's: an order placed before a campaign must not suddenly
+// promise the campaign's longer figure (and one placed during it must keep
+// it after the campaign ends). Same rule the "Pago confirmado" email follows.
+function paidNote(createdAt: string): string {
+  const { weeks, reason } = getLeadTime(createdAt);
+  return `Pago confirmado. Estamos elaborando tu pedido — considera ${weeks} de elaboración${
+    reason ? ` (${reason})` : ""
+  }.`;
+}
+
+export function OrderStatusStepper({
+  status,
+  createdAt,
+}: {
+  status: OrderStatus;
+  /** When the order was placed (`Order.createdAt`). */
+  createdAt: string;
+}) {
   const steps = STEPS.filter(
     (step) => step.status !== DELIVERED_STATUS || status === DELIVERED_STATUS
   );
   const currentIndex = steps.findIndex((step) => step.status === status);
   if (currentIndex === -1) return null;
 
-  const note = STEP_NOTES[status];
+  const note = status === "PAID" ? paidNote(createdAt) : STEP_NOTES[status];
 
   return (
     <>
