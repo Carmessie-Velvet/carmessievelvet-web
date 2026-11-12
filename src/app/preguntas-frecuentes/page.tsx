@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LeadTimeText } from "@/components/layout/LeadTimeText";
 import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 import { Accordion } from "@/components/ui/Accordion";
 
@@ -7,8 +8,8 @@ const faqs = [
     question: "¿Cuánto tarda mi pedido en llegar?",
     answer: (
       <>
-        Nuestras piezas son de tiraje corto — el tiempo de elaboración es de 3 a 4 semanas antes
-        de que tu pedido salga a envío. Una vez que sale, tienes dos opciones:
+        Nuestras piezas son de tiraje corto — el tiempo de elaboración es de <LeadTimeText />{" "}
+        antes de que tu pedido salga a envío. Una vez que sale, tienes dos opciones:
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
           <li>Envío express (Estafeta): $150, 2 a 5 días hábiles.</li>
           <li>Envío estándar (Correos de México): $75, 8 a 20 días hábiles.</li>

@@ -41,6 +41,7 @@ import type { UserAddress } from "@/types/address";
 import type { MxState } from "@/types/mx-state";
 import type { CouponInvalidReason, CouponPreview } from "@/types/coupon";
 import type { PaymentMethod } from "@/types/user";
+import { getLeadTime } from "@/lib/lead-time";
 
 const COUPON_REASON_LABELS: Record<CouponInvalidReason, string> = {
   NOT_FOUND: "No encontramos ese cupón.",
@@ -128,6 +129,7 @@ export default function CheckoutPage() {
   const selectedShipping =
     shippingMethods?.find((method) => method.code === shippingMethodCode) ?? null;
   const hasMadeToOrderItems = items.some((item) => item.product.madeToOrder);
+  const leadTime = getLeadTime();
 
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[] | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
@@ -688,7 +690,8 @@ export default function CheckoutPage() {
               <div className="mt-4 border border-sand bg-cream-soft px-4 py-3.5 text-sm text-ink">
                 <p className="font-medium">Tu pedido incluye piezas hechas sobre pedido.</p>
                 <p className="mt-1 text-ink-muted">
-                  Antes de que salga, considera 3 a 4 semanas de elaboración
+                  Antes de que salga, considera {leadTime.weeks} de elaboración
+                  {leadTime.reason ? ` (${leadTime.reason})` : ""}
                   {selectedShipping?.description
                     ? ` — más el tiempo de envío (${selectedShipping.description})`
                     : ", además del tiempo de envío"}

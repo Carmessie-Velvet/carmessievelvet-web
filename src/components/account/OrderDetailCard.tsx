@@ -52,7 +52,7 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
         </p>
       )}
 
-      <OrderStatusStepper status={order.status} />
+      <OrderStatusStepper status={order.status} createdAt={order.createdAt} />
       <OrderReturnRequestSection order={order} onOrderUpdate={setOrder} />
 
       <ul className="mt-8 flex flex-col divide-y divide-sand border-t border-sand">
