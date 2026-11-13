@@ -36,10 +36,10 @@ export default function DevolucionesPage() {
         <p>
           Puedes cancelar tu pedido en cualquier momento escribiendo al mismo correo,{" "}
           <a
-            href="mailto:carmessievelvet@gmail.com"
+            href="mailto:contactocarmessie@gmail.com"
             className="text-ink underline underline-offset-2 hover:text-velvet"
           >
-            carmessievelvet@gmail.com
+            contactocarmessie@gmail.com
           </a>{" "}
           — no hay un límite de tiempo para solicitarlo.
         </p>
