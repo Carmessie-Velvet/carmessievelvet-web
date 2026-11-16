@@ -82,6 +82,17 @@ Qué días la tienda acepta pedidos es **configurable desde el admin** (`PATCH /
 
 `src/lib/use-purchase-window.ts` refresca el fetch cada 5 minutos (no sólo al montar) para recoger un cambio del admin o el cambio de día sin necesitar recargar. `PurchaseWindowBanner.tsx` (banner fijo en el stack del header) y el gate de `/checkout` (bloquea `POST /orders` si el día está cerrado, antes de llegar a Stripe) leen de este hook — ambos ya reflejan `closedDays` en vivo, no un texto fijo de "viernes, sábado y domingo". El checkout además atrapa el `403 "STORE_CLOSED_TODAY"` de `POST /orders` como red de seguridad (el admin puede cerrar la tienda mientras alguien ya pasó el gate del cliente).
 
+### Formulario de contacto (`/contacto`, 2026-11-16)
+
+El formulario **simulaba** el envío (el propio código decía «no hay endpoint de backend para contacto todavía»): la clienta veía «¡Gracias!» y el mensaje no le llegaba a nadie al equipo. Ahora manda `POST /store/contact` (público) y la API lo entrega por correo al buzón de atención con el correo de la clienta como Reply-To — ver el módulo `contact` de `carmessievelvet-api`.
+
+- `src/services/contact-service.ts` (`ContactService` + `RestContactService`, igual que el resto de los servicios) y `src/lib/support-email.ts` (`SUPPORT_EMAIL`, **la única fuente** del correo de atención: lo usan `/contacto` y `/devoluciones`; si cambia, es un solo cambio aquí y la variable `CONTACT_EMAIL` del API).
+- **«Gracias» solo con un `200`**: la API espera al proveedor de correo, así que un éxito significa que el correo salió. Ante cualquier falla se muestra un mensaje en español (`SEND_ERRORS`: 400 datos inválidos, 429 demasiados mensajes seguidos, 503 el correo no salió) y **siempre con el correo de atención** para que el mensaje no se pierda; el formulario conserva lo escrito y el botón se reactiva.
+- **Campo trampa** (`website`): un input fuera de pantalla (`absolute -left-[9999px]`, no `display:none`, que algunos bots saltan), `tabIndex={-1}`, `aria-hidden`, que una persona nunca llena. Un bot que llena todo lo llena también y la API descarta el mensaje (contestándole `200`, para no avisarle). Se manda siempre, vacío para una persona.
+- Límites de largo en el navegador iguales a los de la API (nombre 100, correo 254, pedido 30, mensaje 10–2000). La página también muestra el correo de atención como enlace `mailto:` debajo del texto de introducción.
+- Hay un límite de **5 mensajes por hora por IP** en el API.
+- **Verificado en el navegador contra un API simulado** (un servidor que registra lo que recibe y responde por modo): éxito (llega `name`/`email`/`message`/`website` vacío, sin `orderNumber` si no se llenó, y con él si se llenó); 503, 429 y 400 muestran su mensaje, no muestran «gracias», conservan lo escrito y reactivan el botón; el campo trampa lleno llega al API y el campo es invisible. **No** contra el API real ni con un correo real — el primer envío real es en producción.
+
 ### Tiempo de elaboración (`src/lib/lead-time.ts`, 2026-11-11)
 
 Todo lo que vende la tienda es hecho sobre pedido, y la promesa «3 a 4 semanas» se repetía como texto suelto en 7 lugares. Ahora vive en un solo módulo con una tabla de **ventanas** (`LEAD_TIME_WINDOWS`): Buen Fin 2026 (jueves 12 → lunes 16 de noviembre, ambos incluidos) dice «5 a 6 semanas (por la alta demanda del Buen Fin)»; fuera de una ventana vale `STANDARD_LEAD_TIME`. Al terminar la ventana vuelve solo — no hay que acordarse de revertir nada.
