@@ -1,5 +1,6 @@
 import { LegalPageLayout } from "@/components/layout/LegalPageLayout";
 import { ReturnRequestForm } from "@/components/devoluciones/ReturnRequestForm";
+import { SUPPORT_EMAIL } from "@/lib/support-email";
 
 export default function DevolucionesPage() {
   return (
@@ -36,10 +37,10 @@ export default function DevolucionesPage() {
         <p>
           Puedes cancelar tu pedido en cualquier momento escribiendo al mismo correo,{" "}
           <a
-            href="mailto:contactocarmessie@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-ink underline underline-offset-2 hover:text-velvet"
           >
-            contactocarmessie@gmail.com
+            {SUPPORT_EMAIL}
           </a>{" "}
           — no hay un límite de tiempo para solicitarlo.
         </p>
