@@ -16,6 +16,7 @@ import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileSection } from "@/components/account/ProfileSection";
+import { EmailVerificationNotice } from "@/components/account/EmailVerificationNotice";
 import { AddressesSection } from "@/components/account/AddressesSection";
 import { PaymentMethodsSection } from "@/components/account/PaymentMethodsSection";
 import type { Order } from "@/types/order";
@@ -87,6 +88,7 @@ export default function CuentaPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <EmailVerificationNotice className="mb-8" />
       {/*
         Every card below is its own grid item, explicitly placed via
         lg:col-start/lg:row-start — deliberately not nested in two

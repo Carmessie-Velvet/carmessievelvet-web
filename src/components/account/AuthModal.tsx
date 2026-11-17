@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/lib/get-error-message";
 import { passwordStrengthError } from "@/lib/validate-password";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
+import { SignupDone } from "@/components/account/SignupDone";
 
 // The site-wide replacement for navigating to /cuenta/login: any "please
 // sign in" moment (header account icon, a gated account page, the wishlist
@@ -281,6 +282,7 @@ function SignupForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -300,12 +302,24 @@ function SignupForm() {
     setIsSubmitting(true);
     try {
       await signup(form);
-      close();
+      // Not just closing the modal: the new account has to be told it must
+      // confirm its email before it can buy (see SignupDone).
+      setDone(true);
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo crear la cuenta."));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (done) {
+    return (
+      <SignupDone>
+        <button type="button" onClick={close} className={buttonClasses("solid")}>
+          Seguir explorando
+        </button>
+      </SignupDone>
+    );
   }
 
   return (

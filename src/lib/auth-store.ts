@@ -1,4 +1,4 @@
-import type { AuthSession } from "@/types/auth";
+import type { AuthSession, AuthUser } from "@/types/auth";
 
 const STORAGE_KEY = "carmessie-velvet-auth";
 
@@ -66,6 +66,14 @@ function createAuthStore() {
     setSession(next: AuthSession | null) {
       loadedFromStorage = true;
       session = next;
+      persist();
+      emit();
+    },
+    /** Replaces only the user of the current session — tokens stay. Used when the account's own data changes under it (e.g. the email just got verified). */
+    updateUser(user: AuthUser) {
+      loadOnce();
+      if (!session) return;
+      session = { ...session, user };
       persist();
       emit();
     },

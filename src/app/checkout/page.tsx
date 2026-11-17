@@ -14,6 +14,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { useCart } from "@/context/cart-context";
 import { useAuth } from "@/context/auth-context";
+import { EmailVerificationNotice } from "@/components/account/EmailVerificationNotice";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { orderService } from "@/services/order-service";
 import { shippingService } from "@/services/shipping-service";
@@ -106,7 +107,7 @@ const STRIPE_APPEARANCE: Appearance = {
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clear, removeItem, setQuantity } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, needsEmailVerification, refreshUser } = useAuth();
   const { open: openAuthModal } = useAuthModal();
   const purchaseWindow = usePurchaseWindow();
 
@@ -343,6 +344,30 @@ export default function CheckoutPage() {
     );
   }
 
+  // An account has to confirm its email before it can buy (the API refuses the
+  // order with 403 EMAIL_NOT_VERIFIED). Said up front, with the way out, instead
+  // of letting someone fill the whole form to be refused at the end. Never blocks
+  // once `order` exists (mid-payment), same as the closed-store gate above, and
+  // never applies to a guest checkout — a guest has no account to confirm.
+  if (isAuthenticated && needsEmailVerification && !order) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-24 sm:px-6">
+        <h1 className="text-center text-2xl font-black uppercase tracking-tight text-ink">
+          Confirma tu correo para comprar
+        </h1>
+        <p className="mt-3 text-center text-sm text-ink-muted">
+          Tu carrito te está esperando. En cuanto confirmes tu correo podrás terminar tu compra.
+        </p>
+        <EmailVerificationNotice title="Falta un paso" className="mt-8" />
+        <div className="mt-8 flex justify-center">
+          <Link href="/carrito" className={buttonClasses("outline")}>
+            Volver al carrito
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   function updateAddress<K extends keyof ShippingAddress>(key: K, value: string) {
     setAddress((prev) => ({ ...prev, [key]: value }));
   }
@@ -388,6 +413,16 @@ export default function CheckoutPage() {
       // apart by message content rather than lumping both under one status.
       const isAddressNotFound =
         err instanceof ApiError && /shipping address/i.test(err.message);
+      // Both "store closed" and "email not verified" are a 403 — the API tells
+      // them apart by message. A session stored before the API sent
+      // `emailVerified` can reach this without the gate above having fired:
+      // re-read the account so the page switches to the "confirm your email"
+      // screen instead of leaving the shopper with a generic error.
+      if (err instanceof ApiError && err.status === 403 && err.message === "EMAIL_NOT_VERIFIED") {
+        void refreshUser();
+        setError("Confirma tu correo para poder comprar. Te enviamos un enlace al registrarte.");
+        return;
+      }
       setError(
         getErrorMessage(err, "No se pudo crear el pedido.", {
           404: isAddressNotFound

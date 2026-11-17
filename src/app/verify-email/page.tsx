@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/services/auth-service";
+import { useAuth } from "@/context/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { buttonClasses } from "@/components/ui/Button";
 
 type Status = "checking" | "success" | "failed" | "missing-token";
+
+// The API answers a used, expired or unknown token with the same generic 400
+// in English. Said once, in Spanish, covering the three cases — including the
+// one people actually hit: opening the same link twice.
+const INVALID_LINK =
+  "Este enlace ya no es válido: venció o ya se usó. Si ya confirmaste tu correo, inicia sesión; si no, pide uno nuevo desde el inicio de sesión.";
 
 // The exact path (`/verify-email?token=...`) the EMAIL_VERIFICATION email's
 // button links to — see docs/API-FRONTEND.md sección 14 in the API repo.
@@ -25,8 +32,14 @@ export default function VerifyEmailPage() {
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isAuthenticated, refreshUser } = useAuth();
   const [status, setStatus] = useState<Status>("checking");
   const [error, setError] = useState<string | null>(null);
+  // One POST per token. The effect can run twice for the same link (React's
+  // Strict Mode in development re-runs it on mount, and a re-render with a new
+  // `searchParams` object would too); the token is single-use, so the second
+  // POST would fail and the page would report a failure for a link that worked.
+  const startedFor = useRef<string | null>(null);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -34,36 +47,46 @@ function VerifyEmailContent() {
       Promise.resolve().then(() => setStatus("missing-token"));
       return;
     }
+    if (startedFor.current === token) return;
+    startedFor.current = token;
 
-    let cancelled = false;
     authService
       .verifyEmail(token)
-      .then(() => {
-        if (cancelled) return;
-        setStatus("success");
-        setTimeout(() => {
-          if (!cancelled) router.replace("/cuenta/login");
-        }, 2500);
-      })
+      .then(() => setStatus("success"))
       .catch((err) => {
-        if (cancelled) return;
-        setError(getErrorMessage(err, "No se pudo verificar tu correo."));
+        setError(getErrorMessage(err, "No se pudo verificar tu correo.", { 400: INVALID_LINK }));
         setStatus("failed");
       });
+  }, [searchParams]);
 
+  // After a success: if the person is already logged in (they signed up on
+  // this device and clicked the link from their mail), refresh their account so
+  // the "confirm your email" notice goes away and send them to it — the login
+  // screen would be a detour for someone who is already in. Anyone else goes to
+  // the login screen, as before.
+  useEffect(() => {
+    if (status !== "success") return;
+    let cancelled = false;
+    if (isAuthenticated) void refreshUser();
+    const id = setTimeout(() => {
+      if (!cancelled) router.replace(isAuthenticated ? "/cuenta" : "/cuenta/login");
+    }, 2500);
     return () => {
       cancelled = true;
+      clearTimeout(id);
     };
-  }, [searchParams, router]);
+  }, [status, isAuthenticated, refreshUser, router]);
 
   if (status === "success") {
     return (
       <StatusLayout title="¡Correo verificado!">
         <p className="mt-3 text-sm text-ink-muted">
-          Ya puedes iniciar sesión. Te llevamos a la pantalla de acceso…
+          {isAuthenticated
+            ? "Ya puedes comprar. Te llevamos a tu cuenta…"
+            : "Ya puedes iniciar sesión. Te llevamos a la pantalla de acceso…"}
         </p>
-        <Link href="/cuenta/login" className={`${buttonClasses("solid")} mt-8`}>
-          Iniciar sesión
+        <Link href={isAuthenticated ? "/cuenta" : "/cuenta/login"} className={`${buttonClasses("solid")} mt-8`}>
+          {isAuthenticated ? "Ir a mi cuenta" : "Iniciar sesión"}
         </Link>
       </StatusLayout>
     );

@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { passwordStrengthError } from "@/lib/validate-password";
 import { FormField } from "@/components/ui/FormField";
+import { SignupDone } from "@/components/account/SignupDone";
 import { buttonClasses } from "@/components/ui/Button";
 
 export default function RegistroPage() {
-  const router = useRouter();
   const { signup } = useAuth();
   const [form, setForm] = useState({
     email: "",
@@ -21,6 +20,7 @@ export default function RegistroPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -40,12 +40,29 @@ export default function RegistroPage() {
     setIsSubmitting(true);
     try {
       await signup(form);
-      router.push("/cuenta");
+      // Not straight to /cuenta: the new account has to be told it must confirm
+      // its email before it can buy (see SignupDone).
+      setDone(true);
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo crear la cuenta."));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (done) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-14 sm:px-6">
+        <SignupDone>
+          <Link href="/cuenta" className={buttonClasses("solid")}>
+            Ir a mi cuenta
+          </Link>
+          <Link href="/tienda" className={buttonClasses("outline")}>
+            Seguir explorando
+          </Link>
+        </SignupDone>
+      </div>
+    );
   }
 
   return (
