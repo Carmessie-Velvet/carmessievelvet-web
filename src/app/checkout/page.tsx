@@ -32,7 +32,9 @@ import { confirmOrderPayment } from "@/lib/confirm-order-payment";
 import { cardBrandLabel } from "@/lib/card-brand-label";
 import { usePurchaseWindow } from "@/lib/use-purchase-window";
 import { describeOpenDays, formatCountdown } from "@/lib/purchase-window";
+import { EMAIL_MISMATCH_MESSAGE, emailsMatch } from "@/lib/emails-match";
 import { FormField } from "@/components/ui/FormField";
+import { ConfirmEmailField } from "@/components/ui/ConfirmEmailField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import type { CreateOrderResult, ShippingAddress } from "@/types/order";
@@ -112,6 +114,9 @@ export default function CheckoutPage() {
 
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [guestEmail, setGuestEmail] = useState("");
+  // A guest types their email twice (the order's tracking and every email go
+  // there, and nothing else proves it's right). Not sent to the API.
+  const [confirmGuestEmail, setConfirmGuestEmail] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
@@ -353,6 +358,12 @@ export default function CheckoutPage() {
       setError("Elige un método de envío para continuar.");
       return;
     }
+    // The field already blocks the submit through the browser's validation;
+    // this covers a submit that gets past it.
+    if (!isAuthenticated && !emailsMatch(guestEmail, confirmGuestEmail)) {
+      setError(EMAIL_MISMATCH_MESSAGE);
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -472,14 +483,22 @@ export default function CheckoutPage() {
               )}
             </div>
             {!isAuthenticated && (
-              <FormField
-                id="guestEmail"
-                label="Correo electrónico"
-                type="email"
-                required
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-              />
+              <div className="flex flex-col gap-4">
+                <FormField
+                  id="guestEmail"
+                  label="Correo electrónico"
+                  type="email"
+                  required
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                />
+                <ConfirmEmailField
+                  id="confirmGuestEmail"
+                  email={guestEmail}
+                  value={confirmGuestEmail}
+                  onChange={setConfirmGuestEmail}
+                />
+              </div>
             )}
             {isAuthenticated && user && (
               <p className="text-sm text-ink-muted">

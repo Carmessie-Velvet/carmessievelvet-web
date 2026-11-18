@@ -1,11 +1,13 @@
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, Ref } from "react";
 
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
+  /** Ref to the `<input>` itself (the wrapper div is what `ref` would reach). */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
-export function FormField({ label, error, id, ...props }: FormFieldProps) {
+export function FormField({ label, error, id, inputRef, ...props }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -16,6 +18,7 @@ export function FormField({ label, error, id, ...props }: FormFieldProps) {
       </label>
       <input
         id={id}
+        ref={inputRef}
         className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)] disabled:bg-cream-soft disabled:text-ink-muted"
         aria-invalid={!!error}
         {...props}
