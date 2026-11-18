@@ -9,7 +9,9 @@ import { ApiError } from "@/lib/api-client";
 import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { passwordStrengthError } from "@/lib/validate-password";
+import { EMAIL_MISMATCH_MESSAGE, emailsMatch } from "@/lib/emails-match";
 import { FormField } from "@/components/ui/FormField";
+import { ConfirmEmailField } from "@/components/ui/ConfirmEmailField";
 import { buttonClasses } from "@/components/ui/Button";
 
 // The site-wide replacement for navigating to /cuenta/login: any "please
@@ -279,6 +281,9 @@ function SignupForm() {
     lastName: "",
     phoneNumber: "",
   });
+  // Kept out of `form` on purpose: `signup(form)` sends the whole object and the
+  // API rejects fields it doesn't know.
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -290,6 +295,13 @@ function SignupForm() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+
+    // The field already blocks the submit through the browser's validation;
+    // this covers a submit that gets past it.
+    if (!emailsMatch(form.email, confirmEmail)) {
+      setError(EMAIL_MISMATCH_MESSAGE);
+      return;
+    }
 
     const passwordError = passwordStrengthError(form.password);
     if (passwordError) {
@@ -336,6 +348,12 @@ function SignupForm() {
         required
         value={form.email}
         onChange={update("email")}
+      />
+      <ConfirmEmailField
+        id="modal-signup-confirm-email"
+        email={form.email}
+        value={confirmEmail}
+        onChange={setConfirmEmail}
       />
       <FormField
         id="modal-phoneNumber"
