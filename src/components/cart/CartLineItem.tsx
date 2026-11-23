@@ -67,16 +67,16 @@ export function CartLineItem({
               type="button"
               aria-label="Disminuir cantidad"
               onClick={() => setQuantity(key, item.quantity - 1)}
-              className="flex h-7 w-7 items-center justify-center text-ink hover:bg-cream-soft"
+              className="flex h-11 w-11 items-center justify-center text-lg text-ink hover:bg-cream-soft active:bg-cream-soft"
             >
               −
             </button>
-            <span className="w-7 text-center text-sm">{item.quantity}</span>
+            <span className="w-8 text-center text-sm">{item.quantity}</span>
             <button
               type="button"
               aria-label="Aumentar cantidad"
               onClick={() => setQuantity(key, item.quantity + 1)}
-              className="flex h-7 w-7 items-center justify-center text-ink hover:bg-cream-soft"
+              className="flex h-11 w-11 items-center justify-center text-lg text-ink hover:bg-cream-soft active:bg-cream-soft"
             >
               +
             </button>
@@ -84,7 +84,7 @@ export function CartLineItem({
           <button
             type="button"
             onClick={() => removeItem(key)}
-            className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+            className="flex min-h-11 items-center px-1 text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
           >
             Quitar
           </button>
