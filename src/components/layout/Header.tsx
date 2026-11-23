@@ -61,6 +61,45 @@ export function Header() {
     return () => window.removeEventListener("keydown", onKey);
   }, [megaOpen]);
 
+  // The payment page drops the navigation, search, account and cart: nothing
+  // there should lead away from finishing the purchase. Just a way back, the
+  // logo, and a reminder that the payment is safe.
+  if (pathname === "/checkout") {
+    return (
+      <header className="border-b border-sand bg-cream/95 backdrop-blur">
+        <div className="mx-auto grid h-[var(--header-h-compact)] max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center px-2 sm:px-4 lg:px-10">
+          <Link
+            href="/tienda"
+            aria-label="Seguir comprando"
+            className="flex min-h-11 items-center gap-2 justify-self-start px-2.5 text-[11.5px] font-bold uppercase tracking-[0.14em] text-ink"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5 -scale-x-100" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+            <span className="hidden lg:inline">Seguir comprando</span>
+          </Link>
+          <Link href="/" aria-label="Carmessie Velvet — inicio">
+            <Image
+              src="/brand/carmessie-mark-ink.png"
+              alt="Carmessie Velvet"
+              width={186}
+              height={32}
+              className="h-[21px] w-auto lg:h-6"
+              priority
+            />
+          </Link>
+          <div className="flex items-center gap-2 justify-self-end pr-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[19px] w-[19px] text-velvet" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="9" rx="1.5" />
+              <path d="M8 11V8a4 4 0 018 0v3" />
+            </svg>
+            <span className="hidden lg:inline">Pago seguro</span>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   const navLinkClass = transparent
     ? "text-xs font-medium uppercase tracking-[0.16em] text-cream-soft/80 transition-colors hover:text-cream-soft"
     : "text-xs font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:text-velvet";

@@ -43,6 +43,13 @@ export function StickyBuyBar({
 }) {
   const visible = useScrolledPast(anchorRef);
 
+  // While a sticky bar exists, the footer reserves room so the bar never
+  // covers its last line (see `[.has-sticky-bar_&]:pb-24` in Footer.tsx).
+  useEffect(() => {
+    document.body.classList.add("has-sticky-bar");
+    return () => document.body.classList.remove("has-sticky-bar");
+  }, []);
+
   return (
     <motion.div
       initial={false}

@@ -6,6 +6,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { TopBar } from "@/components/layout/TopBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { FooterSwitch } from "@/components/layout/FooterSwitch";
 import { CartProvider } from "@/context/cart-context";
 import { AuthProvider } from "@/context/auth-context";
 import { AuthModalProvider } from "@/context/auth-modal-context";
@@ -128,7 +129,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     <main className="flex-1 pt-[var(--header-stack-height)]">
                       {children}
                     </main>
-                    <Footer />
+                    <FooterSwitch>
+                      <Footer />
+                    </FooterSwitch>
                     <CartDrawer />
                     <QuickAddModal />
                     <AuthModal />

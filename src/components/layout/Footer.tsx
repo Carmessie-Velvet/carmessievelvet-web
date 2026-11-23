@@ -13,7 +13,7 @@ export function Footer() {
         <ul className="mx-auto grid max-w-7xl gap-3.5 px-6 py-6 sm:grid-cols-3 sm:gap-6 sm:py-8">
           <TrustItem icon={<TruckIcon />}>Envíos a todo México</TrustItem>
           <TrustItem icon={<ClockIcon />}>Hecho sobre pedido · {formatLeadTime(getLeadTime())}</TrustItem>
-          <TrustItem icon={<CardIcon />}>Pago seguro con tarjeta</TrustItem>
+          <TrustItem icon={<CardIcon />}>Pago 100% seguro</TrustItem>
         </ul>
       </div>
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-6 py-14 sm:grid-cols-4 sm:gap-10">
@@ -82,7 +82,7 @@ export function Footer() {
           </a>
         </div>
       </div>
-      <div className="border-t border-cream-soft/10 px-6 py-5 text-center text-[11px] uppercase tracking-[0.18em] text-cream-soft/50">
+      <div className="border-t border-cream-soft/10 px-6 py-5 text-center text-[11px] uppercase tracking-[0.18em] text-cream-soft/50 [.has-sticky-bar_&]:pb-24 lg:[.has-sticky-bar_&]:pb-5">
         © {new Date().getFullYear()} Carmessie Velvet
       </div>
     </footer>

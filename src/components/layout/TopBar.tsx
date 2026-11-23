@@ -68,7 +68,11 @@ export function TopBar() {
               {formatCountdown(purchaseWindow.secondsRemaining)}
             </span>
           )}
-          <span className="group/info relative flex shrink-0">
+          {/* No `relative` here on purpose: the tooltip positions against the
+              (full-width) message row, so on a phone it is centered in the
+              screen instead of hanging off the right edge and making the page
+              scroll sideways. */}
+          <span className="group/info flex shrink-0">
             <button
               type="button"
               aria-label="Cómo funciona el horario de pedidos"
