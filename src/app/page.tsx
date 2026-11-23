@@ -125,35 +125,40 @@ export default async function HomePage() {
               todo lo menor a 640px el srcSet completo (varias densidades) de
               la imagen mobile, no solo la única URL plana del <img> de abajo. */}
           <source srcSet={mobileSrcSet} />
-          <img {...mobileImgProps} alt={heroAlt} className="object-cover opacity-90" />
+          <img
+            {...mobileImgProps}
+            alt={heroAlt}
+            className="object-cover opacity-90 motion-safe:animate-[hero-zoom_22s_var(--ease-soft)_forwards]"
+          />
         </picture>
         {/* Video opcional encima de la imagen (que queda debajo como poster/respaldo). */}
         <HeroVideo desktopSrc={hero.videoUrl} mobileSrc={hero.videoMobileUrl} className="opacity-90" />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-ink/70 via-ink/25 to-transparent" />
-        <Reveal
-          immediate
-          delay={0.15}
-          className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-16"
-        >
+        <div className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-16 lg:px-14 lg:pb-16">
           {hero.title && (
-            <p className="text-xs font-medium uppercase tracking-[0.3em] text-cream-soft/80">
-              {hero.title}
-            </p>
+            <Reveal immediate delay={0.2}>
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-cream-soft/80">
+                {hero.title}
+              </p>
+            </Reveal>
           )}
           {hero.content && (
-            <h1 className="mt-3 max-w-md text-4xl font-black leading-[1.05] tracking-tight text-cream-soft sm:text-6xl">
-              {hero.content}
-            </h1>
+            <Reveal immediate delay={0.38}>
+              <h1 className="mt-3 max-w-md text-[42px] font-black leading-[1.03] tracking-tight text-cream-soft sm:max-w-xl sm:text-6xl lg:text-[76px]">
+                {hero.content}
+              </h1>
+            </Reveal>
           )}
           {hero.buttonLabel && hero.buttonPath && (
-            <div className="mt-7">
-              <Link href={hero.buttonPath} className={buttonClasses("outline-light")}>
+            <Reveal immediate delay={0.56} className="mt-7">
+              <Link href={hero.buttonPath} className={`${buttonClasses("light")} h-12 px-8`}>
                 {hero.buttonLabel}
+                <ArrowIcon />
               </Link>
-            </div>
+            </Reveal>
           )}
-        </Reveal>
+        </div>
       </section>
 
       <BrandMessage />
@@ -168,9 +173,9 @@ export default async function HomePage() {
             </h2>
             <Link
               href="/tienda"
-              className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-velvet"
+              className="flex min-h-11 items-center text-xs font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-velvet"
             >
-              Ver todo
+              Ver todo →
             </Link>
           </div>
           <ProductGrid products={newArrivals} />
@@ -186,27 +191,32 @@ export default async function HomePage() {
               Explora por categoría
             </h2>
           </Reveal>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
             {categories.map((cat, i) => (
               <Reveal key={cat.slug} delay={i * 0.12}>
                 <Link
                   href={`/tienda?categoria=${cat.slug}`}
-                  className="group relative block aspect-[4/3] overflow-hidden bg-sand sm:aspect-[3/4]"
+                  className="group relative block aspect-[4/3.2] overflow-hidden bg-sand sm:aspect-[16/11]"
                 >
                   <Image
                     src={categoryImages[cat.slug]}
                     alt={cat.name}
                     fill
                     sizes="(min-width: 640px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    className="object-cover transition-transform duration-[1500ms] ease-[var(--ease-soft)] group-hover:scale-[1.06]"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-ink/10 to-transparent transition-colors group-hover:from-ink/60" />
-                  <span className="absolute bottom-5 left-5 text-lg font-black uppercase tracking-tight text-cream-soft">
-                    {cat.name}
-                  </span>
-                  <span className="absolute bottom-5 right-5 flex h-8 w-8 items-center justify-center rounded-full border border-cream-soft/50 text-cream-soft opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 -translate-x-2">
-                    <ArrowIcon />
-                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-wine/80 via-wine/0 to-transparent" />
+                  <div className="absolute inset-x-5 bottom-[18px] flex items-end justify-between text-cream-soft">
+                    <span className="text-[30px] font-black uppercase leading-none tracking-tight sm:text-[44px]">
+                      {cat.name}
+                    </span>
+                    <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em]">
+                      Ver
+                      <span className="transition-transform duration-500 ease-[var(--ease-soft)] group-hover:translate-x-1.5">
+                        <ArrowIcon />
+                      </span>
+                    </span>
+                  </div>
                 </Link>
               </Reveal>
             ))}
@@ -221,8 +231,8 @@ export default async function HomePage() {
 
 function ArrowIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5" aria-hidden="true">
-      <path d="M6 18 18 6M9 6h9v9" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }

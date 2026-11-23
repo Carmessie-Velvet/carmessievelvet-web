@@ -30,6 +30,7 @@
   --color-velvet: #4b1530;
   --color-velvet-light: #8c4a63;
   --color-paper: #fffdfb;
+  --color-wine: #33101f;
   /* Deliberately outside the cream/ink/velvet palette — used only by the
      PurchaseWindowBanner's closed state, where the client specifically
      wants a color that reads as its own "pay attention" signal rather
