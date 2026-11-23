@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { OrderStatusChip } from "./OrderStatusChip";
 import { formatCurrency } from "@/lib/format-currency";
 import { formatVariantMeta } from "@/lib/format-variant-meta";
 import { formatShippingMethodCode } from "@/lib/shipping-method-label";
@@ -35,9 +35,7 @@ export function OrderDetailCard({ order: orderProp }: { order: Order }) {
             })}
           </p>
         </div>
-        <span className="shrink-0 bg-ink px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cream-soft">
-          {ORDER_STATUS_LABELS[order.status]}
-        </span>
+        <OrderStatusChip status={order.status} className="shrink-0" />
       </div>
 
       {order.trackingNumber && (

@@ -9,15 +9,13 @@ import { useRequireAuth } from "@/lib/use-require-auth";
 import { userService } from "@/services/user-service";
 import { orderService } from "@/services/order-service";
 import { ApiError } from "@/lib/api-client";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
-import { formatCurrency } from "@/lib/format-currency";
-import { formatOrderDate } from "@/lib/format-order-date";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileSection } from "@/components/account/ProfileSection";
 import { AddressesSection } from "@/components/account/AddressesSection";
 import { PaymentMethodsSection } from "@/components/account/PaymentMethodsSection";
+import { OrderRow } from "@/components/account/OrderRow";
 import type { Order } from "@/types/order";
 
 export default function CuentaPage() {
@@ -143,23 +141,10 @@ export default function CuentaPage() {
               </Link>
             </div>
           ) : (
-            <ul className="mt-4 divide-y divide-sand border-t border-sand">
+            <ul className="-mx-6 mt-4 divide-y divide-sand border-t border-sand">
               {recentOrders.map((order) => (
                 <li key={order.id}>
-                  <Link
-                    href={`/cuenta/pedidos/${order.id}`}
-                    className="flex items-center justify-between gap-4 py-4 transition-colors hover:text-velvet"
-                  >
-                    <div>
-                      <p className="text-sm text-ink">{order.orderNumber}</p>
-                      <p className="mt-0.5 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                        {ORDER_STATUS_LABELS[order.status]} · {formatOrderDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium text-ink">
-                      {formatCurrency(order.total)}
-                    </p>
-                  </Link>
+                  <OrderRow order={order} href={`/cuenta/pedidos/${order.id}`} />
                 </li>
               ))}
             </ul>

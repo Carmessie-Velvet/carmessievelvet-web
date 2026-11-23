@@ -75,7 +75,7 @@ export function OrderStatusStepper({
                   <step.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </span>
                 <span
-                  className={`w-[4.5rem] break-words text-center text-[9px] font-medium uppercase leading-tight tracking-[0.02em] sm:text-[10px] sm:tracking-[0.06em] ${
+                  className={`w-[4.75rem] text-balance text-center text-[9px] font-medium uppercase leading-tight tracking-[0.02em] sm:w-24 sm:text-[10px] sm:tracking-[0.06em] ${
                     isReached ? "text-ink" : "text-ink-muted"
                   }`}
                 >

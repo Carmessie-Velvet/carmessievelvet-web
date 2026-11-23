@@ -73,7 +73,7 @@ export function PaymentMethodsSection() {
               <button
                 type="button"
                 onClick={() => setPendingRemoveId(method.id)}
-                className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+                className="flex h-11 items-center border border-sand bg-paper px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink transition-colors hover:border-ink"
               >
                 Eliminar
               </button>

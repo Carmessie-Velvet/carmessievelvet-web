@@ -59,6 +59,10 @@ function RastrearPedidoContent() {
           id="orderNumber"
           label="Número de pedido"
           placeholder="CM-001021"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
           required
           value={orderNumber}
           onChange={(e) => setOrderNumber(e.target.value)}
@@ -67,6 +71,8 @@ function RastrearPedidoContent() {
           id="email"
           label="Correo electrónico"
           type="email"
+          autoComplete="email"
+          enterKeyHint="search"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
