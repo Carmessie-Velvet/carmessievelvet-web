@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { motion } from "framer-motion";
 import type { Product, Size } from "@/types/product";
 import { useCart } from "@/context/cart-context";
 import { Button } from "@/components/ui/Button";
 import { isSoldOut } from "@/lib/product-stock";
-import { formatLeadTime, getLeadTime } from "@/lib/lead-time";
 import { useSetSelections } from "@/lib/use-set-selections";
 import { SizeGuideModal } from "@/components/product/SizeGuideModal";
 import { ComponentSelector } from "@/components/product/ComponentSelector";
 import { ColorPicker } from "@/components/product/ColorPicker";
+import { MadeToOrderCard } from "@/components/product/MadeToOrderCard";
+import { StickyBuyBar } from "@/components/product/StickyBuyBar";
 
 export function AddToCartForm({ product }: { product: Product }) {
   if (product.category.type === "SET") {
@@ -23,6 +25,9 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const { addItem, openDrawer } = useCart();
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const [shake, setShake] = useState(0);
 
   const hasColorChoice = product.colors.length > 0;
   // Same rule as ComponentSelector: a product with no color of its own comes
@@ -41,8 +46,18 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
     openDrawer();
   }
 
+  // From the sticky bar with nothing chosen yet: bring the choices into view.
+  function handleStickyPress() {
+    if (selectedSize) {
+      handleAdd();
+      return;
+    }
+    formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    setShake((n) => n + 1);
+  }
+
   return (
-    <div>
+    <div id="comprar" ref={formRef} className="scroll-mt-28">
       {hasColorChoice && (
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
@@ -71,7 +86,12 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
           Guía de tallas
         </button>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <motion.div
+        key={shake}
+        animate={shake ? { x: [0, -7, 6, -4, 3, 0] } : undefined}
+        transition={{ duration: 0.5 }}
+        className="mt-3 grid grid-cols-4 gap-2"
+      >
         {sizeOptions.map((option) => (
           <button
             key={option.size}
@@ -79,35 +99,45 @@ function SimpleAddToCartForm({ product }: { product: Product }) {
             disabled={!option.available}
             onClick={() => setSelectedSize(option.size)}
             aria-pressed={selectedSize === option.size}
-            className={`flex h-11 w-11 items-center justify-center border text-xs font-medium uppercase tracking-wide transition-colors ${
+            className={`h-12 border text-[13px] font-bold uppercase tracking-wide transition-all duration-300 active:scale-95 ${
               !option.available
                 ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
                 : selectedSize === option.size
-                  ? "border-ink bg-ink text-cream-soft"
-                  : "border-sand text-ink hover:border-ink"
+                  ? "-translate-y-0.5 border-ink bg-ink text-cream-soft shadow-[0_10px_16px_-10px_rgba(42,31,28,0.6)]"
+                  : "border-sand bg-white text-ink hover:border-ink"
             }`}
           >
             {option.size}
           </button>
         ))}
-      </div>
+      </motion.div>
 
       {product.madeToOrder && !isSoldOut(product) && (
-        <p className="mt-3 text-xs text-ink-muted">
-          Hecho sobre pedido · tiempo de elaboración de {formatLeadTime(getLeadTime())}.
-        </p>
+        <div className="mt-5">
+          <MadeToOrderCard />
+        </div>
       )}
 
-      <div className="mt-6">
+      <div ref={ctaRef} className="mt-4">
         <Button
           type="button"
           onClick={handleAdd}
           disabled={!selectedSize}
-          className="w-full"
+          className="h-14 w-full"
         >
           {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
         </Button>
       </div>
+
+      {!isSoldOut(product) && (
+        <StickyBuyBar
+          product={product}
+          anchorRef={ctaRef}
+          ready={!!selectedSize}
+          label={selectedSize ? "Agregar al carrito" : "Elige tu talla"}
+          onPress={handleStickyPress}
+        />
+      )}
 
       <SizeGuideModal isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />
     </div>
@@ -119,6 +149,8 @@ function SetAddToCartForm({ product }: { product: Product }) {
   const { addItem, openDrawer } = useCart();
   const { components, selections, setSelection, complete, buildCartSelections } =
     useSetSelections(product.components);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   function handleAdd() {
     if (!complete) return;
@@ -126,8 +158,16 @@ function SetAddToCartForm({ product }: { product: Product }) {
     openDrawer();
   }
 
+  function handleStickyPress() {
+    if (complete) {
+      handleAdd();
+      return;
+    }
+    formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   return (
-    <div>
+    <div id="comprar" ref={formRef} className="scroll-mt-28">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
           Elige talla y color de cada prenda
@@ -153,16 +193,26 @@ function SetAddToCartForm({ product }: { product: Product }) {
       </div>
 
       {product.madeToOrder && !isSoldOut(product) && (
-        <p className="mt-3 text-xs text-ink-muted">
-          Hecho sobre pedido · tiempo de elaboración de {formatLeadTime(getLeadTime())}.
-        </p>
+        <div className="mt-5">
+          <MadeToOrderCard />
+        </div>
       )}
 
-      <div className="mt-6">
-        <Button type="button" onClick={handleAdd} disabled={!complete} className="w-full">
+      <div ref={ctaRef} className="mt-4">
+        <Button type="button" onClick={handleAdd} disabled={!complete} className="h-14 w-full">
           {isSoldOut(product) ? "Agotado" : complete ? "Agregar al carrito" : "Elige talla y color"}
         </Button>
       </div>
+
+      {!isSoldOut(product) && (
+        <StickyBuyBar
+          product={product}
+          anchorRef={ctaRef}
+          ready={complete}
+          label={complete ? "Agregar al carrito" : "Elige talla y color"}
+          onPress={handleStickyPress}
+        />
+      )}
 
       <SizeGuideModal isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />
     </div>

@@ -8,15 +8,16 @@ import { useCart } from "@/context/cart-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { formatCurrency } from "@/lib/format-currency";
 import { buttonClasses } from "@/components/ui/Button";
-import { SlideOver } from "@/components/ui/SlideOver";
+import { Sheet } from "@/components/ui/Sheet";
 import { HeartIcon } from "@/components/icons/HeartIcon";
 import { CartLineItem } from "./CartLineItem";
 import { cartItemKey } from "@/lib/cart-item-key";
+import { formatLeadTime, getLeadTime } from "@/lib/lead-time";
 
 type Tab = "cart" | "wishlist";
 
 export function CartDrawer() {
-  const { items, subtotal, isDrawerOpen, closeDrawer } = useCart();
+  const { items, subtotal, itemCount, isDrawerOpen, closeDrawer } = useCart();
   const { items: wishlistItems, toggle: toggleWishlist } = useWishlist();
   const [activeTab, setActiveTab] = useState<Tab>("cart");
 
@@ -29,25 +30,27 @@ export function CartDrawer() {
   }, [isDrawerOpen]);
 
   return (
-    <SlideOver
+    <Sheet
       isOpen={isDrawerOpen}
       onClose={closeDrawer}
-      side="right"
+      desktop="right"
       labelledBy="cart-drawer-heading"
     >
-      <div className="border-b border-sand px-5 py-4">
+      <div className="border-b border-sand px-5 pb-2 pt-1 lg:pt-4">
         <div className="flex items-center justify-between">
           <h2
             id="cart-drawer-heading"
             className="text-xs font-medium uppercase tracking-[0.2em] text-ink"
           >
-            {activeTab === "cart" ? "Carrito" : "Favoritos"}
+            {activeTab === "cart"
+              ? `Tu carrito${itemCount > 0 ? ` (${itemCount})` : ""}`
+              : "Favoritos"}
           </h2>
           <button
             type="button"
             onClick={closeDrawer}
             aria-label="Cerrar"
-            className="flex h-8 w-8 items-center justify-center text-ink transition-transform duration-300 ease-out hover:rotate-90"
+            className="-mr-2 flex h-11 w-11 items-center justify-center text-ink transition-transform duration-300 ease-out hover:rotate-90"
           >
             <CloseIcon />
           </button>
@@ -97,14 +100,35 @@ export function CartDrawer() {
               </AnimatePresence>
             </ul>
 
-            <div className="border-t border-sand px-5 py-5">
-              <div className="mb-4 flex items-center justify-between text-sm">
-                <span className="text-ink-muted">Subtotal</span>
-                <span className="font-medium text-ink">{formatCurrency(subtotal)}</span>
+            <div className="border-t border-sand px-5 pb-6 pt-4">
+              {items.some((item) => item.product.madeToOrder) && (
+                <p className="mb-3 flex items-center gap-2.5 border border-sand bg-cream-soft px-3 py-2.5 text-xs text-ink-muted">
+                  <ScissorsIcon />
+                  <span>
+                    Hecho sobre pedido · lo elaboramos para ti en {formatLeadTime(getLeadTime())}
+                  </span>
+                </p>
+              )}
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-ink-muted">Subtotal</span>
+                <span className="text-lg font-extrabold text-ink">{formatCurrency(subtotal)}</span>
               </div>
-              <Link href="/carrito" onClick={closeDrawer} className={`${buttonClasses("solid")} w-full`}>
-                Ver carrito completo
+              <p className="mb-4 mt-0.5 text-xs text-ink-muted">El envío se calcula al pagar.</p>
+              <Link
+                href="/checkout"
+                onClick={closeDrawer}
+                className={`${buttonClasses("solid")} h-14 w-full gap-2.5 bg-velvet hover:bg-ink`}
+              >
+                <BagIcon />
+                Ir a pagar · {formatCurrency(subtotal)}
               </Link>
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="mt-1 flex h-12 w-full items-center justify-center text-xs font-medium uppercase tracking-[0.16em] text-ink-muted underline-offset-4 hover:text-velvet hover:underline"
+              >
+                Seguir comprando
+              </button>
             </div>
           </>
         )
@@ -169,7 +193,7 @@ export function CartDrawer() {
           </div>
         </>
       )}
-    </SlideOver>
+    </Sheet>
   );
 }
 
@@ -177,6 +201,23 @@ function tabButtonClass(active: boolean) {
   return `flex h-11 flex-1 items-center justify-center border-b-2 transition-colors duration-200 ${
     active ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
   }`;
+}
+
+function ScissorsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      className="h-[18px] w-[18px] shrink-0 text-velvet"
+      aria-hidden="true"
+    >
+      <circle cx="6" cy="7" r="2.6" />
+      <circle cx="6" cy="17" r="2.6" />
+      <path d="M8.3 8.5L20 15M8.3 15.5L20 9" />
+    </svg>
+  );
 }
 
 function CloseIcon() {

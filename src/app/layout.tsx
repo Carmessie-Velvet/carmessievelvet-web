@@ -3,10 +3,10 @@ import { Archivo } from "next/font/google";
 import { MotionConfig } from "framer-motion";
 import "./globals.css";
 import { SITE_URL } from "@/lib/site-url";
-import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
-import { PurchaseWindowBanner } from "@/components/layout/PurchaseWindowBanner";
+import { TopBar } from "@/components/layout/TopBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { FooterSwitch } from "@/components/layout/FooterSwitch";
 import { CartProvider } from "@/context/cart-context";
 import { AuthProvider } from "@/context/auth-context";
 import { AuthModalProvider } from "@/context/auth-modal-context";
@@ -25,7 +25,7 @@ const SITE_NAME = "Carmessie Velvet";
 const SITE_DESCRIPTION =
   "Carmessie Velvet — corsets y sets de tiraje corto para vestir con actitud. Piezas de tiraje corto, hechas en México.";
 
-// The announcement bar (and the FAQ, the home message...) state the
+// The top bar (and the FAQ, the home message...) state the
 // made-to-order lead time, which depends on the date (`lib/lead-time.ts` — a
 // campaign like Buen Fin lengthens it for a few days). A page prerendered at
 // build time would keep the figure it had that day for good, so every route
@@ -123,14 +123,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <CartProvider>
                   <QuickAddProvider>
                     <div className="fixed inset-x-0 top-0 z-40">
-                      <PurchaseWindowBanner />
-                      <AnnouncementBar />
+                      <TopBar />
                       <Header />
                     </div>
                     <main className="flex-1 pt-[var(--header-stack-height)]">
                       {children}
                     </main>
-                    <Footer />
+                    <FooterSwitch>
+                      <Footer />
+                    </FooterSwitch>
                     <CartDrawer />
                     <QuickAddModal />
                     <AuthModal />

@@ -462,13 +462,13 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="text-3xl font-black uppercase tracking-tight text-ink">
-        Checkout
+    <div className="mx-auto max-w-5xl px-4 pb-32 pt-8 sm:px-6 sm:pt-14 lg:pb-14">
+      <h1 className="text-[26px] font-black uppercase leading-none tracking-tight text-ink sm:text-3xl">
+        Finalizar compra
       </h1>
 
-      <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
-        <form onSubmit={handleCreateOrder} className="flex flex-col gap-8 lg:order-1">
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
+        <form id="checkout-form" onSubmit={handleCreateOrder} className="flex min-w-0 flex-col gap-8 lg:order-1">
           <section>
             <div className="mb-4 flex items-center justify-between gap-4">
               <SectionTitle step={1} label="Contacto" />
@@ -488,6 +488,11 @@ export default function CheckoutPage() {
                   id="guestEmail"
                   label="Correo electrónico"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  enterKeyHint="next"
                   required
                   value={guestEmail}
                   onChange={(e) => setGuestEmail(e.target.value)}
@@ -529,6 +534,9 @@ export default function CheckoutPage() {
                 <FormField
                   id="fullName"
                   label="Nombre completo"
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  enterKeyHint="next"
                   required
                   value={address.fullName}
                   onChange={(e) => updateAddress("fullName", e.target.value)}
@@ -537,14 +545,19 @@ export default function CheckoutPage() {
                   id="phone"
                   label="Teléfono"
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  enterKeyHint="next"
                   required
                   value={address.phone}
                   onChange={(e) => updateAddress("phone", e.target.value)}
                 />
-                <div className="grid grid-cols-[1fr_auto] gap-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-4">
                   <FormField
                     id="street"
                     label="Calle"
+                    autoComplete="address-line1"
+                    enterKeyHint="next"
                     required
                     value={address.street}
                     onChange={(e) => updateAddress("street", e.target.value)}
@@ -552,6 +565,8 @@ export default function CheckoutPage() {
                   <FormField
                     id="extNumber"
                     label="Núm. exterior"
+                    autoComplete="off"
+                    enterKeyHint="next"
                     required
                     value={address.extNumber}
                     onChange={(e) => updateAddress("extNumber", e.target.value)}
@@ -560,6 +575,8 @@ export default function CheckoutPage() {
                 <FormField
                   id="intNumber"
                   label="Núm. interior / depto (opcional)"
+                  autoComplete="address-line2"
+                  enterKeyHint="next"
                   value={address.intNumber}
                   onChange={(e) => updateAddress("intNumber", e.target.value)}
                 />
@@ -567,6 +584,8 @@ export default function CheckoutPage() {
                   id="postalCode"
                   label="Código postal"
                   required
+                  autoComplete="postal-code"
+                  enterKeyHint="next"
                   inputMode="numeric"
                   pattern="\d{5}"
                   maxLength={5}
@@ -591,9 +610,10 @@ export default function CheckoutPage() {
                     <select
                       id="suburb"
                       required
+                      autoComplete="address-level3"
                       value={address.suburb}
                       onChange={(e) => updateAddress("suburb", e.target.value)}
-                      className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+                      className="h-[54px] border border-sand bg-paper px-3 text-base text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
                     >
                       <option value="" disabled>
                         Selecciona una colonia
@@ -609,6 +629,8 @@ export default function CheckoutPage() {
                   <FormField
                     id="suburb"
                     label="Colonia"
+                    autoComplete="address-level3"
+                    enterKeyHint="next"
                     required
                     value={address.suburb}
                     onChange={(e) => updateAddress("suburb", e.target.value)}
@@ -618,6 +640,8 @@ export default function CheckoutPage() {
                   <FormField
                     id="city"
                     label="Ciudad"
+                    autoComplete="address-level2"
+                    enterKeyHint="next"
                     required
                     value={address.city}
                     onChange={(e) => updateAddress("city", e.target.value)}
@@ -632,9 +656,10 @@ export default function CheckoutPage() {
                     <select
                       id="stateCode"
                       required
+                      autoComplete="address-level1"
                       value={address.stateCode}
                       onChange={(e) => updateAddress("stateCode", e.target.value)}
-                      className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+                      className="h-[54px] border border-sand bg-paper px-3 text-base text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
                     >
                       <option value="" disabled>
                         {mxStates ? "Selecciona un estado" : "Cargando…"}
@@ -650,6 +675,8 @@ export default function CheckoutPage() {
                 <FormField
                   id="reference"
                   label="Referencia / entre calles (opcional)"
+                  autoComplete="off"
+                  enterKeyHint="done"
                   value={address.reference}
                   onChange={(e) => updateAddress("reference", e.target.value)}
                 />
@@ -676,7 +703,7 @@ export default function CheckoutPage() {
                 {shippingMethods.map((method) => (
                   <label
                     key={method.code}
-                    className={`flex cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
+                    className={`flex min-h-[68px] cursor-pointer items-center justify-between gap-4 border px-4 py-3 transition-colors ${
                       shippingMethodCode === method.code
                         ? "border-ink bg-cream-soft"
                         : "border-sand hover:border-ink"
@@ -689,6 +716,7 @@ export default function CheckoutPage() {
                         value={method.code}
                         checked={shippingMethodCode === method.code}
                         onChange={() => setShippingMethodCode(method.code)}
+                        className="h-5 w-5 accent-velvet"
                       />
                       <div>
                         <p className="text-sm text-ink">{formatShippingMethodCode(method.code)}</p>
@@ -736,14 +764,15 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={isSubmitting || !selectedShipping}
-            className={buttonClasses("solid")}
+            className={`${buttonClasses("solid")} h-14 max-lg:hidden`}
           >
             {isSubmitting ? "Procesando…" : "Continuar al pago"}
           </button>
         </form>
 
         <OrderSummary
-          className="lg:sticky lg:top-24 lg:order-2"
+          className="order-first lg:sticky lg:top-[calc(var(--sticky-top)+1.5rem)] lg:order-2"
+          totalLabel={formatCurrency(subtotal + (selectedShipping?.price ?? 0))}
           lines={items.map((item) => {
             const key = cartItemKey(item);
             return {
@@ -787,6 +816,16 @@ export default function CheckoutPage() {
           note="El total final (con descuentos o cupón aplicado) se calcula en el siguiente paso."
         />
       </div>
+
+      <PayBar
+        formId="checkout-form"
+        totalLabel="Total estimado"
+        total={formatCurrency(subtotal + (selectedShipping?.price ?? 0))}
+        disabled={isSubmitting || !selectedShipping}
+        busy={isSubmitting}
+        label="Continuar al pago"
+        busyLabel="Procesando…"
+      />
     </div>
   );
 }
@@ -807,6 +846,7 @@ function OrderSummary({
   rows,
   note,
   className = "",
+  totalLabel,
   couponSlot,
   addressSummary,
   onEditAddress,
@@ -825,6 +865,8 @@ function OrderSummary({
   rows: { label: string; value: string; strong?: boolean }[];
   note?: string;
   className?: string;
+  /** The order total, shown in the phone's collapsed header. */
+  totalLabel: string;
   couponSlot?: React.ReactNode;
   /** One-line shipping-address recap — only passed on the payment step, so a
    * shopper double-checking their card details can still catch (and fix) a
@@ -832,8 +874,38 @@ function OrderSummary({
   addressSummary?: string;
   onEditAddress?: () => void;
 }) {
+  // On a phone the summary sits above the form, collapsed to one line with the
+  // total (it used to push the form a full screen down); from `lg` up it is
+  // the always-open column beside the form.
+  const [open, setOpen] = useState(false);
   return (
-    <div className={`border border-sand bg-cream-soft p-6 ${className}`}>
+    <div className={className}>
+    <button
+      type="button"
+      onClick={() => setOpen((value) => !value)}
+      aria-expanded={open}
+      className="flex min-h-14 w-full items-center gap-2.5 border border-sand bg-cream-soft px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-ink lg:hidden"
+    >
+      <span className="flex-1">Resumen del pedido</span>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        className={`h-[18px] w-[18px] text-velvet transition-transform duration-500 ease-[var(--ease-soft)] ${open ? "rotate-180" : ""}`}
+        aria-hidden="true"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+      <b className="text-base tracking-normal">{totalLabel}</b>
+    </button>
+    <div
+      className={`grid transition-[grid-template-rows] duration-500 ease-[var(--ease-soft)] lg:grid-rows-[1fr] ${
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      }`}
+    >
+    <div className="min-h-0 overflow-hidden lg:overflow-visible">
+    <div className="border border-t-0 border-sand bg-cream-soft p-5 sm:p-6 lg:border-t">
       <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
         Tu pedido
       </p>
@@ -870,16 +942,16 @@ function OrderSummary({
                       type="button"
                       aria-label="Disminuir cantidad"
                       onClick={() => line.onQuantityChange!(line.quantity! - 1)}
-                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                      className="flex h-9 w-9 items-center justify-center text-ink hover:bg-paper"
                     >
                       −
                     </button>
-                    <span className="w-6 text-center text-xs">{line.quantity}</span>
+                    <span className="w-7 text-center text-xs">{line.quantity}</span>
                     <button
                       type="button"
                       aria-label="Aumentar cantidad"
                       onClick={() => line.onQuantityChange!(line.quantity! + 1)}
-                      className="flex h-6 w-6 items-center justify-center text-ink hover:bg-paper"
+                      className="flex h-9 w-9 items-center justify-center text-ink hover:bg-paper"
                     >
                       +
                     </button>
@@ -892,7 +964,7 @@ function OrderSummary({
                     type="button"
                     onClick={line.onRemove}
                     aria-label="Quitar del pedido"
-                    className="flex h-6 w-6 shrink-0 items-center justify-center text-ink-muted transition-colors hover:text-velvet"
+                    className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center text-ink-muted transition-colors hover:text-velvet"
                   >
                     <RemoveIcon />
                   </button>
@@ -947,6 +1019,50 @@ function OrderSummary({
         Pago 100% seguro y encriptado
       </div>
     </div>
+    </div>
+    </div>
+    </div>
+  );
+}
+
+/**
+ * Phone-only bar pinned to the bottom with the total and the button that
+ * submits the form above (through the `form` attribute, so it needs no extra
+ * logic). On desktop the button stays at the end of the form.
+ */
+function PayBar({
+  formId,
+  total,
+  totalLabel,
+  label,
+  busyLabel,
+  disabled,
+  busy,
+}: {
+  formId: string;
+  total: string;
+  totalLabel: string;
+  label: string;
+  busyLabel: string;
+  disabled: boolean;
+  busy: boolean;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3.5 border-t border-sand bg-paper/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">{totalLabel}</p>
+        <p className="text-xl font-black leading-tight text-ink">{total}</p>
+      </div>
+      <button
+        type="submit"
+        form={formId}
+        disabled={disabled}
+        className="flex h-[52px] shrink-0 basis-[56%] items-center justify-center gap-2.5 bg-ink px-3 text-xs font-bold uppercase tracking-[0.16em] text-cream-soft transition-colors hover:bg-velvet disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {busy && <Spinner className="border-cream-soft/40 border-t-cream-soft" />}
+        {busy ? busyLabel : label}
+      </button>
+    </div>
   );
 }
 
@@ -971,16 +1087,16 @@ function CouponField({
       <div className="flex overflow-hidden rounded-lg border border-ink transition-shadow duration-200 focus-within:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]">
         <input
           id="couponCode"
-          placeholder="Código de cupón o tarjeta de regalo"
+          placeholder="Cupón o tarjeta de regalo"
           value={code}
           onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
-          className="min-w-0 flex-1 bg-paper px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-muted"
+          className="h-12 min-w-0 flex-1 bg-paper px-4 text-base text-ink outline-none placeholder:text-ink-muted"
         />
         <button
           type="button"
           onClick={onValidate}
           disabled={!code.trim() || isValidating}
-          className="shrink-0 border-l border-ink px-5 text-xs font-semibold uppercase tracking-wide text-ink-muted transition-colors enabled:hover:text-ink disabled:cursor-not-allowed disabled:text-ink-muted/40"
+          className="h-12 shrink-0 border-l border-ink px-5 text-xs font-semibold uppercase tracking-wide text-ink-muted transition-colors enabled:hover:text-ink disabled:cursor-not-allowed disabled:text-ink-muted/40"
         >
           {isValidating ? "Validando…" : "Aplicar"}
         </button>
@@ -1025,10 +1141,10 @@ function PaymentStep({
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="text-3xl font-black uppercase tracking-tight text-ink">Pago</h1>
+    <div className="mx-auto max-w-5xl px-4 pb-32 pt-8 sm:px-6 sm:pt-14 lg:pb-14">
+      <h1 className="text-[26px] font-black uppercase leading-none tracking-tight text-ink sm:text-3xl">Pago</h1>
 
-      <div className="mt-8 grid gap-12 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-[1.5fr_1fr] lg:items-start lg:gap-16">
         <div className="lg:order-1">
           <SectionTitle step={4} label="Pago" />
 
@@ -1048,7 +1164,8 @@ function PaymentStep({
         </div>
 
         <OrderSummary
-          className="lg:sticky lg:top-24 lg:order-2"
+          className="order-first lg:sticky lg:top-[calc(var(--sticky-top)+1.5rem)] lg:order-2"
+          totalLabel={formatCurrency(order.total, order.currency.toUpperCase())}
           lines={order.items.map((item) => ({
             key: item.id,
             href: `/producto/${item.productSku.toLowerCase()}`,
@@ -1179,7 +1296,7 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handlePay} className="flex flex-col gap-5">
+    <form id="payment-form" onSubmit={handlePay} className="flex flex-col gap-5">
       {hasSavedMethods && (
         <SavedCardPicker
           methods={savedMethods!}
@@ -1192,11 +1309,20 @@ function PaymentForm({
       <button
         type="submit"
         disabled={!stripe || isPaying}
-        className={`${buttonClasses("solid")} gap-2.5`}
+        className={`${buttonClasses("solid")} h-14 gap-2.5 max-lg:hidden`}
       >
         {isPaying && <Spinner className="border-cream-soft/40 border-t-cream-soft" />}
         {isPaying ? "Procesando pago…" : `Pagar ${total}`}
       </button>
+      <PayBar
+        formId="payment-form"
+        totalLabel="Total"
+        total={total}
+        disabled={!stripe || isPaying}
+        busy={isPaying}
+        label={`Pagar ${total}`}
+        busyLabel="Procesando pago…"
+      />
     </form>
   );
 }

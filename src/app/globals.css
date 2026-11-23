@@ -1,11 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  /* Combined height of the fixed PurchaseWindowBanner + AnnouncementBar +
-     Header stack (see layout.tsx). Single source of truth for the top
-     padding non-hero pages need, and the negative margin the homepage hero
-     cancels it with. */
-  --header-stack-height: 140px;
+  /* Height of the fixed TopBar + Header stack (see layout.tsx). Single source
+     of truth for the top padding non-hero pages need, and the negative margin
+     the homepage hero cancels it with. The header shrinks once the page
+     scrolls (`--header-h-compact`), so anything that sticks under it uses
+     `--sticky-top`. */
+  --topbar-h: 32px;
+  --header-h: 60px;
+  --header-h-compact: 52px;
+  --header-stack-height: calc(var(--topbar-h) + var(--header-h));
+  --sticky-top: calc(var(--topbar-h) + var(--header-h-compact));
+  --ease-soft: cubic-bezier(0.22, 0.8, 0.22, 1);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 72px;
+    --header-h-compact: 56px;
+  }
 }
 
 @theme {
@@ -17,6 +30,7 @@
   --color-velvet: #4b1530;
   --color-velvet-light: #8c4a63;
   --color-paper: #fffdfb;
+  --color-wine: #33101f;
   /* Deliberately outside the cream/ink/velvet palette — used only by the
      PurchaseWindowBanner's closed state, where the client specifically
      wants a color that reads as its own "pay attention" signal rather
@@ -34,15 +48,50 @@ body {
   color: var(--color-ink);
 }
 
-/* Diagonal stripe drift for PurchaseWindowBanner — respects
-   prefers-reduced-motion via the rule below, same as every other
-   animation on the site. */
-@keyframes purchase-window-shimmer {
+/* Slow zoom on the homepage hero image (the "Ken Burns" drift). */
+@keyframes hero-zoom {
   from {
-    background-position: 0 0;
+    transform: scale(1.1);
   }
   to {
-    background-position: 48px 0;
+    transform: scale(1);
+  }
+}
+
+/* Gentle pulse for the status dot in the TopBar. */
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Hint pill in the photo viewer: fades in, stays, fades out. */
+@keyframes hint-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  15%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes field-flash {
+  from {
+    background-color: #efe0e8;
+  }
+  to {
+    background-color: var(--color-paper);
   }
 }
 
