@@ -151,8 +151,19 @@ export default async function ProductPage({
 
           <div className="mt-8">
             <Accordion
-              defaultOpenIndex={0}
+              defaultOpenIndex={1}
               items={[
+                {
+                  question: "Cuidado de la prenda",
+                  answer: (
+                    <ul className="flex list-disc flex-col gap-1 pl-5">
+                      <li>Lavar a mano o en seco (en tintorería).</li>
+                      <li>No usar secadora.</li>
+                      <li>No usar cloro.</li>
+                      <li>Planchar a nivel bajo.</li>
+                    </ul>
+                  ),
+                },
                 {
                   question: "Envíos",
                   answer: (

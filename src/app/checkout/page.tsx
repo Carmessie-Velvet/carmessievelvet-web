@@ -1087,7 +1087,7 @@ function CouponField({
       <div className="flex overflow-hidden rounded-lg border border-ink transition-shadow duration-200 focus-within:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]">
         <input
           id="couponCode"
-          placeholder="Código de cupón o tarjeta de regalo"
+          placeholder="Cupón o tarjeta de regalo"
           value={code}
           onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
           className="h-12 min-w-0 flex-1 bg-paper px-4 text-base text-ink outline-none placeholder:text-ink-muted"
