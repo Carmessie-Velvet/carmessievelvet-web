@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import type { ProductSortBy } from "@/services/product-service";
 import type { Size } from "@/types/product";
@@ -6,6 +5,7 @@ import { productService } from "@/services/product-service";
 import { SITE_URL } from "@/lib/site-url";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { TiendaFilters } from "@/components/product/TiendaFilters";
+import { CategoryTabs } from "@/components/product/CategoryTabs";
 import { Pagination } from "@/components/product/Pagination";
 
 
@@ -118,36 +118,15 @@ export default async function TiendaPage({
         {activeCategory ? activeCategory.name : "Toda la colección"}
       </h1>
 
-      <div className="mt-6 flex gap-6 border-b border-sand">
-        <Link
-          href="/tienda"
-          className={`border-b-2 py-3 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
-            !activeCategory
-              ? "border-ink text-ink"
-              : "border-transparent text-ink-muted hover:text-ink"
-          }`}
-        >
-          Todo
-        </Link>
-        {categories.map((cat) => (
-          <Link
-            key={cat.slug}
-            href={`/tienda?categoria=${cat.slug}`}
-            className={`border-b-2 py-3 text-xs font-medium uppercase tracking-[0.16em] transition-colors ${
-              activeCategory?.slug === cat.slug
-                ? "border-ink text-ink"
-                : "border-transparent text-ink-muted hover:text-ink"
-            }`}
-          >
-            {cat.name}
-          </Link>
-        ))}
+      {/* Tabs and filters stay pinned under the header while the list scrolls,
+          so changing category or sorting never means scrolling back up. */}
+      <div className="sticky top-[var(--sticky-top)] z-30 -mx-4 bg-cream/95 px-4 pt-4 backdrop-blur sm:-mx-6 sm:px-6">
+        <CategoryTabs categories={categories} activeSlug={activeCategory?.slug} />
+        <TiendaFilters total={productPage.total} />
       </div>
 
-      <TiendaFilters />
-
-      <div className="mt-10">
-        <ProductGrid products={products} />
+      <div className="mt-4 sm:mt-6">
+        <ProductGrid products={products} adjustable />
       </div>
 
       <Pagination

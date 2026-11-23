@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useQuickAdd } from "@/context/quick-add-context";
 import { useCart } from "@/context/cart-context";
-import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
+import { Sheet } from "@/components/ui/Sheet";
+import { formatLeadTime, getLeadTime } from "@/lib/lead-time";
 import { useSetSelections } from "@/lib/use-set-selections";
 import { formatCurrency } from "@/lib/format-currency";
 import { isSoldOut } from "@/lib/product-stock";
@@ -60,10 +60,10 @@ function SimpleFields({
         </>
       )}
 
-      <p className={`text-xs font-medium uppercase tracking-[0.16em] text-ink-muted ${hasColorChoice ? "mt-4" : "mt-6"}`}>
+      <p className={`text-xs font-bold uppercase tracking-[0.18em] text-ink ${hasColorChoice ? "mt-4" : "mt-5"}`}>
         Talla
       </p>
-      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-4 gap-2">
         {sizeOptions.map((option) => (
           <button
             key={option.size}
@@ -71,12 +71,12 @@ function SimpleFields({
             disabled={!option.available}
             onClick={() => setSelectedSize(option.size)}
             aria-pressed={selectedSize === option.size}
-            className={`h-10 border text-xs font-medium uppercase tracking-wide transition-colors ${
+            className={`h-12 border text-[13px] font-bold uppercase tracking-wide transition-all duration-200 active:scale-95 ${
               !option.available
                 ? "cursor-not-allowed border-sand text-ink-muted/40 line-through"
                 : selectedSize === option.size
-                  ? "border-ink bg-ink text-cream-soft"
-                  : "border-sand text-ink hover:border-ink"
+                  ? "-translate-y-0.5 border-ink bg-ink text-cream-soft shadow-[0_10px_16px_-10px_rgba(42,31,28,0.6)]"
+                  : "border-sand bg-white text-ink hover:border-ink"
             }`}
           >
             {option.size}
@@ -84,11 +84,13 @@ function SimpleFields({
         ))}
       </div>
 
+      <MadeToOrderNote product={product} />
+
       <button
         type="button"
         onClick={handleAdd}
         disabled={!selectedSize}
-        className="mt-6 flex w-full items-center justify-center gap-2 bg-ink px-6 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-cream-soft transition-colors duration-200 hover:bg-velvet disabled:cursor-not-allowed disabled:opacity-40"
+        className={ctaClass}
       >
         {isSoldOut(product) ? "Agotado" : selectedSize ? "Agregar al carrito" : "Elige una talla"}
       </button>
@@ -108,10 +110,15 @@ function SetFields({ product, onAdded }: { product: Product; onAdded: () => void
     openDrawer();
   }
 
+  const chosen = components.filter((component) => selections[component.id]?.size).length;
+
   return (
     <>
-      <p className="mt-6 text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+      <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-ink">
         Elige talla y color de cada prenda
+      </p>
+      <p className="mt-1 text-xs text-ink-muted">
+        {chosen} de {components.length} prendas
       </p>
       <div className="mt-3 flex flex-col gap-4">
         {components.map((component) => (
@@ -124,11 +131,13 @@ function SetFields({ product, onAdded }: { product: Product; onAdded: () => void
         ))}
       </div>
 
+      <MadeToOrderNote product={product} />
+
       <button
         type="button"
         onClick={handleAdd}
         disabled={!complete}
-        className="mt-6 flex w-full items-center justify-center gap-2 bg-ink px-6 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-cream-soft transition-colors duration-200 hover:bg-velvet disabled:cursor-not-allowed disabled:opacity-40"
+        className={ctaClass}
       >
         {isSoldOut(product) ? "Agotado" : complete ? "Agregar al carrito" : "Elige talla y color"}
       </button>
@@ -136,93 +145,83 @@ function SetFields({ product, onAdded }: { product: Product; onAdded: () => void
   );
 }
 
+const ctaClass =
+  "mt-4 flex h-14 w-full items-center justify-center gap-2 bg-ink px-6 text-xs font-bold uppercase tracking-[0.18em] text-cream-soft transition-colors duration-200 hover:bg-velvet disabled:cursor-not-allowed disabled:opacity-40";
+
+function MadeToOrderNote({ product }: { product: Product }) {
+  if (!product.madeToOrder || isSoldOut(product)) return null;
+  return (
+    <p className="mt-4 flex items-center gap-2.5 border border-sand bg-cream-soft px-3 py-2.5 text-xs text-ink-muted">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-[18px] w-[18px] shrink-0 text-velvet" aria-hidden="true">
+        <circle cx="6" cy="7" r="2.6" />
+        <circle cx="6" cy="17" r="2.6" />
+        <path d="M8.3 8.5L20 15M8.3 15.5L20 9" />
+      </svg>
+      <span>Hecho sobre pedido · lo elaboramos para ti en {formatLeadTime(getLeadTime())}</span>
+    </p>
+  );
+}
+
+/**
+ * Pick a size (or a size and color per piece, for a set) without leaving the
+ * page you are on. A bottom sheet on a phone, a centered dialog on desktop.
+ */
 export function QuickAddModal() {
   const { product, isOpen, close } = useQuickAdd();
-
-  useLockBodyScroll(isOpen);
-  useEscapeKey(close, isOpen);
+  const discount = product ? discountPercent(product) : null;
 
   return (
-    <AnimatePresence>
-      {isOpen && product && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]"
-          onClick={close}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="quick-add-heading"
-        >
-          <motion.div
-            // Remounts per product/open so SimpleFields/SetFields' own
-            // selection state always starts fresh instead of leaking a
-            // previous product's picks into the next one.
-            key={product.id}
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[88vh] w-full max-w-lg overflow-hidden bg-paper shadow-[0_30px_70px_-20px_rgba(42,31,28,0.45)]"
-          >
-            <div className="relative hidden w-[42%] shrink-0 bg-sand sm:block">
+    <Sheet isOpen={isOpen && !!product} onClose={close} desktop="center" labelledBy="quick-add-heading">
+      {product && (
+        // Remounts per product so SimpleFields/SetFields' own selection state
+        // always starts fresh instead of leaking a previous product's picks.
+        <div key={product.id} className="flex-1 overflow-y-auto px-5 pb-6 pt-1 lg:pt-5">
+          <div className="flex items-center gap-4">
+            <div className="relative h-20 w-16 shrink-0 overflow-hidden bg-sand">
               <Image
                 src={product.images[0].src}
                 alt={product.images[0].alt}
                 fill
-                sizes="220px"
+                sizes="64px"
                 className="object-cover"
               />
             </div>
-
-            <div className="relative flex-1 overflow-y-auto p-6">
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Cerrar"
-                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center text-ink-muted transition-all duration-300 ease-out hover:rotate-90 hover:text-ink"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">
                 {product.category.name}
               </p>
-              <h2 id="quick-add-heading" className="mt-1.5 text-xl font-black tracking-tight text-ink">
+              <h2 id="quick-add-heading" className="mt-0.5 text-base font-black uppercase leading-tight tracking-tight text-ink">
                 {product.name}
               </h2>
-              {discountPercent(product) && (
-                <DiscountBadge percent={discountPercent(product)!} className="mt-2" />
-              )}
-              <p className="mt-1 text-sm font-medium uppercase tracking-[0.08em] text-ink-muted">
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[15px] font-extrabold text-ink">
                 {product.compareAtPrice && (
-                  <span className="mr-2 line-through opacity-60">
+                  <span className="text-xs font-medium text-ink-muted line-through opacity-70">
                     {formatCurrency(product.compareAtPrice)}
                   </span>
                 )}
-                <span
-                  className={
-                    discountPercent(product) ? "text-base font-bold normal-case tracking-normal text-velvet" : ""
-                  }
-                >
-                  {formatCurrency(product.price)}
-                </span>
+                <span className={discount ? "text-velvet" : ""}>{formatCurrency(product.price)}</span>
+                {discount && <DiscountBadge percent={discount} />}
               </p>
-
-              {product.category.type === "SET" ? (
-                <SetFields product={product} onAdded={close} />
-              ) : (
-                <SimpleFields product={product} onAdded={close} />
-              )}
             </div>
-          </motion.div>
-        </motion.div>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Cerrar"
+              className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center self-start text-ink-muted transition-all duration-300 ease-out hover:rotate-90 hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+
+          {product.category.type === "SET" ? (
+            <SetFields product={product} onAdded={close} />
+          ) : (
+            <SimpleFields product={product} onAdded={close} />
+          )}
+        </div>
       )}
-    </AnimatePresence>
+    </Sheet>
   );
 }

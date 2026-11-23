@@ -11,12 +11,8 @@ import { Testimonials } from "@/components/layout/Testimonials";
 import { testimonialService } from "@/services/testimonial-service";
 import { buttonClasses } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
+import { categoryImages } from "@/lib/nav-links";
 import type { Hero } from "@/types/hero";
-
-const categoryPreview: Record<string, string> = {
-  corsets: "/products/corset-brocade.jpeg",
-  sets: "/products/set-black-fur.jpeg",
-};
 
 // Shown only if the admin hasn't activated a hero yet (GET /store/hero
 // returns `[]` in that case) — the site's original look, so the homepage
@@ -198,7 +194,7 @@ export default async function HomePage() {
                   className="group relative block aspect-[4/3] overflow-hidden bg-sand sm:aspect-[3/4]"
                 >
                   <Image
-                    src={categoryPreview[cat.slug]}
+                    src={categoryImages[cat.slug]}
                     alt={cat.name}
                     fill
                     sizes="(min-width: 640px) 50vw, 100vw"

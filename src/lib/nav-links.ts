@@ -16,8 +16,8 @@ export const quickHelpLinks = helpLinks.slice(0, 4);
 
 /** Photo behind each category tile (menus and the homepage mosaic). */
 export const categoryImages: Record<string, string> = {
-  corsets: "/products/corset-brocade.jpeg",
-  sets: "/products/set-black-fur.jpeg",
+  corsets: "/categories/corsets.jpg",
+  sets: "/categories/sets.jpg",
 };
 
 export const INSTAGRAM_URL = "https://www.instagram.com/carmessievelvet/";

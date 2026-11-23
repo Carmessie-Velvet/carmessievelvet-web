@@ -42,7 +42,7 @@ export function ComponentSelector({
               disabled={onlyOneColor}
               onClick={() => onChange({ size: null, color })}
               aria-pressed={activeColor === color}
-              className={`h-9 border px-3 text-xs font-medium uppercase tracking-wide transition-colors disabled:cursor-default ${
+              className={`h-11 border px-4 text-xs font-medium uppercase tracking-wide transition-colors disabled:cursor-default ${
                 activeColor === color
                   ? "border-ink bg-ink text-cream-soft"
                   : "border-sand text-ink hover:border-ink"
