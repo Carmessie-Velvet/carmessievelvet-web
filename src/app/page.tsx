@@ -173,7 +173,7 @@ export default async function HomePage() {
             </h2>
             <Link
               href="/tienda"
-              className="flex min-h-11 items-center text-xs font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-velvet"
+              className="flex min-h-11 shrink-0 items-center whitespace-nowrap text-xs font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-velvet"
             >
               Ver todo →
             </Link>

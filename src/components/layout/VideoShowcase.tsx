@@ -187,7 +187,7 @@ function VideoRail({ products }: { products: Product[] }) {
         <div
           ref={trackRef}
           {...dragHandlers}
-          className={`-mx-4 flex cursor-grab snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] active:cursor-grabbing sm:mx-0 sm:snap-none sm:gap-5 sm:px-0 [&::-webkit-scrollbar]:hidden ${
+          className={`-mx-4 flex cursor-grab snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] active:cursor-grabbing sm:mx-0 sm:snap-none sm:gap-5 sm:px-0 [&::-webkit-scrollbar]:hidden ${
             few ? "sm:justify-center" : ""
           }`}
         >

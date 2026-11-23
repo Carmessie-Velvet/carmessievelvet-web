@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { productService } from "@/services/product-service";
@@ -8,6 +9,11 @@ import { AddToCartForm } from "@/components/product/AddToCartForm";
 import { WishlistButton } from "@/components/product/WishlistButton";
 import { DiscountBadge } from "@/components/product/DiscountBadge";
 import { ProductGallery } from "@/components/product/ProductGallery";
+import { ProductCard } from "@/components/product/ProductCard";
+import { Accordion } from "@/components/ui/Accordion";
+import { Reveal } from "@/components/ui/Reveal";
+import { LeadTimeText } from "@/components/layout/LeadTimeText";
+import { isSoldOut } from "@/lib/product-stock";
 
 // Catalog data (price, stock) is live in the real API — render on demand
 // with a short cache instead of pre-generating every product at build time.
@@ -92,13 +98,29 @@ export default async function ProductPage({
   if (!product) notFound();
   const discount = discountPercent(product);
 
+  // "Completa tu look": other pieces that can still be bought, the other
+  // category first (a corset suggests a set and vice versa). Best-effort — a
+  // failure here must never take the product page down.
+  const others = await productService
+    .getPage({ limit: 12 })
+    .then((page) => page.items)
+    .catch(() => []);
+  const look = others
+    .filter((other) => other.id !== product.id && !isSoldOut(other))
+    .sort(
+      (a, b) =>
+        Number(a.category.slug === product.category.slug) -
+        Number(b.category.slug === product.category.slug)
+    )
+    .slice(0, 4);
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto max-w-7xl px-4 pb-8 pt-0 sm:px-6 sm:py-12">
       <ProductJsonLd product={product} />
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
-        <ProductGallery images={product.images} videoUrl={product.videoUrl} productName={product.name} />
+        <ProductGallery product={product} />
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div className="lg:sticky lg:top-[calc(var(--sticky-top)+2rem)] lg:self-start">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-muted">
             {product.category.name}
           </p>
@@ -126,8 +148,67 @@ export default async function ProductPage({
           <div className="mt-8 border-t border-sand pt-8">
             <AddToCartForm product={product} />
           </div>
+
+          <div className="mt-8">
+            <Accordion
+              defaultOpenIndex={0}
+              items={[
+                {
+                  question: "Envíos",
+                  answer: (
+                    <p>
+                      Enviamos a todo México. Tu pieza se elabora después de tu compra (tiempo de
+                      elaboración: <LeadTimeText />) y el tiempo de envío empieza a contar hasta que
+                      está lista.
+                    </p>
+                  ),
+                },
+                {
+                  question: "Cambios y devoluciones",
+                  answer: (
+                    <p>
+                      Tienes 15 días naturales a partir de que recibes tu pedido para solicitar un
+                      cambio o reembolso. La prenda no debe haber sido usada y se regresa en su
+                      empaque original; el envío de la devolución corre por tu cuenta.{" "}
+                      <Link
+                        href="/devoluciones"
+                        className="text-ink underline underline-offset-2 hover:text-velvet"
+                      >
+                        Ver política de devoluciones
+                      </Link>
+                    </p>
+                  ),
+                },
+              ]}
+            />
+          </div>
         </div>
       </div>
+
+      {look.length > 0 && (
+        <section className="mt-16 border-t border-sand pt-12 sm:mt-24 sm:pt-16">
+          <Reveal>
+            <div className="mb-6 flex items-end justify-between gap-3 sm:mb-8">
+              <h2 className="text-2xl font-black uppercase tracking-tight text-ink sm:text-3xl">
+                Completa tu look
+              </h2>
+              <Link
+                href="/tienda"
+                className="flex min-h-11 shrink-0 items-center whitespace-nowrap text-xs font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-velvet"
+              >
+                Ver todo →
+              </Link>
+            </div>
+          </Reveal>
+          <div className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-6 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+            {look.map((other) => (
+              <div key={other.id} className="w-[62%] shrink-0 snap-start sm:w-auto">
+                <ProductCard product={other} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
