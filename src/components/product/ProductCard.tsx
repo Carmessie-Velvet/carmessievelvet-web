@@ -114,8 +114,10 @@ export function ProductCard({
           </span>
         </button>
 
+        {/* A sold-out piece keeps its photo in full colour: the client found the
+            greyed-out version read as mourning. The "Agotado" tag says it. */}
         <motion.div
-          className={`relative h-full w-full ${soldOut ? "opacity-80 grayscale-[0.55]" : ""}`}
+          className="relative h-full w-full"
           whileHover={{ scale: 1.045 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
