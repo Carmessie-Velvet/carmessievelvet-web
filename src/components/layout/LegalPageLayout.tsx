@@ -1,3 +1,5 @@
+import { HelpLinks } from "@/components/layout/HelpLinks";
+
 export function LegalPageLayout({
   title,
   children,
@@ -11,6 +13,7 @@ export function LegalPageLayout({
       <div className="mt-8 flex flex-col gap-5 text-sm leading-relaxed text-ink-muted">
         {children}
       </div>
+      <HelpLinks className="mt-14" />
     </div>
   );
 }

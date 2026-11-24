@@ -8,6 +8,7 @@ import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { OrderDetailCard } from "@/components/account/OrderDetailCard";
+import { HelpLinks } from "@/components/layout/HelpLinks";
 import type { Order } from "@/types/order";
 
 export default function RastrearPedidoPage() {
@@ -93,6 +94,8 @@ function RastrearPedidoContent() {
           <OrderDetailCard order={order} />
         </div>
       )}
+
+      <HelpLinks className="mt-14" />
     </div>
   );
 }

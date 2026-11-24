@@ -41,7 +41,7 @@ export default function CuentaLayout({ children }: { children: React.ReactNode }
     <div>
       {isAuthenticated && user && (
         <div className="border-b border-sand bg-cream-soft">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-sm font-bold text-cream-soft">
                 {user.email.charAt(0).toUpperCase()}
@@ -52,7 +52,7 @@ export default function CuentaLayout({ children }: { children: React.ReactNode }
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="shrink-0 text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
+              className="-mr-3 flex h-11 shrink-0 items-center px-3 text-xs font-medium uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
             >
               {isLoggingOut ? "Cerrando…" : "Cerrar sesión"}
             </button>
@@ -65,7 +65,7 @@ export default function CuentaLayout({ children }: { children: React.ReactNode }
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className={`border-b-2 py-3 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+                  className={`flex h-11 items-center border-b-2 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
                     active
                       ? "border-ink text-ink"
                       : "border-transparent text-ink-muted hover:text-ink"

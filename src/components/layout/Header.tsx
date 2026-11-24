@@ -55,7 +55,7 @@ export function Header() {
   useEffect(() => {
     if (!megaOpen) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setMegaOpen(false);
+      if (event.key === "Escape") setMegaPath(null);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
