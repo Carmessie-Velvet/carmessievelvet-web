@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
+import { HelpLinks } from "@/components/layout/HelpLinks";
 import { contactService } from "@/services/contact-service";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { SUPPORT_EMAIL } from "@/lib/support-email";
@@ -54,11 +56,23 @@ export default function ContactoPage() {
 
   if (submitted) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center sm:px-6">
-        <h1 className="text-2xl font-black uppercase tracking-tight text-ink">¡Gracias!</h1>
-        <p className="mt-3 text-sm text-ink-muted">
+      <div className="mx-auto flex max-w-md flex-col items-center px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-24">
+        <span
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-ink text-cream-soft"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-8 w-8">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        </span>
+        <h1 className="mt-6 text-3xl font-black uppercase tracking-tight text-ink">¡Gracias!</h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink-muted">
           Recibimos tu mensaje y te responderemos a la brevedad al correo que nos diste.
         </p>
+        <Link href="/tienda" className={buttonClasses("solid", "mt-8 h-[52px] w-full sm:w-auto sm:px-10")}>
+          Seguir comprando
+        </Link>
+        <HelpLinks className="mt-12 w-full text-left" />
       </div>
     );
   }
@@ -82,6 +96,7 @@ export default function ContactoPage() {
         <FormField
           id="name"
           label="Nombre"
+          autoComplete="name"
           required
           maxLength={100}
           value={name}
@@ -91,6 +106,7 @@ export default function ContactoPage() {
           id="email"
           label="Correo electrónico"
           type="email"
+          autoComplete="email"
           required
           maxLength={254}
           value={email}
@@ -118,7 +134,7 @@ export default function ContactoPage() {
             maxLength={2000}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+            className="min-h-36 w-full border border-sand bg-paper px-4 py-3.5 text-base text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
           />
         </div>
 
@@ -143,10 +159,12 @@ export default function ContactoPage() {
           </p>
         )}
 
-        <button type="submit" disabled={isSubmitting} className={`${buttonClasses("solid")} mt-2`}>
+        <button type="submit" disabled={isSubmitting} className={`${buttonClasses("solid")} mt-2 h-[52px]`}>
           {isSubmitting ? "Enviando…" : "Enviar"}
         </button>
       </form>
+
+      <HelpLinks className="mt-14" />
     </div>
   );
 }

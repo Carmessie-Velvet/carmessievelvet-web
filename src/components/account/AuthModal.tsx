@@ -1,18 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { useAuth } from "@/context/auth-context";
 import { authService } from "@/services/auth-service";
 import { ApiError } from "@/lib/api-client";
-import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { passwordStrengthError } from "@/lib/validate-password";
 import { EMAIL_MISMATCH_MESSAGE, emailsMatch } from "@/lib/emails-match";
 import { FormField } from "@/components/ui/FormField";
 import { ConfirmEmailField } from "@/components/ui/ConfirmEmailField";
 import { buttonClasses } from "@/components/ui/Button";
+import { Sheet } from "@/components/ui/Sheet";
 
 // The site-wide replacement for navigating to /cuenta/login: any "please
 // sign in" moment (header account icon, a gated account page, the wishlist
@@ -21,77 +20,40 @@ import { buttonClasses } from "@/components/ui/Button";
 // exist as real pages for direct links (emails, bookmarks) — this modal is
 // the in-context shortcut, not a replacement for them.
 export function AuthModal() {
-  const { isOpen, mode, close, setMode } = useAuthModal();
+  const { isOpen, mode, close } = useAuthModal();
 
-  useLockBodyScroll(isOpen);
-  useEscapeKey(close, isOpen);
-
+  // A bottom sheet on a phone (drag it down to dismiss), a centered dialog on
+  // desktop — the same panel the cart and quick add use. One heading and one
+  // switch link at the bottom, instead of tabs plus a second "Crear cuenta".
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4 backdrop-blur-[2px]"
-          onClick={close}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="auth-modal-heading"
+    <Sheet
+      isOpen={isOpen}
+      onClose={close}
+      desktop="center"
+      labelledBy="auth-modal-heading"
+      className="lg:max-w-md!"
+    >
+      <div className="flex shrink-0 items-center justify-between gap-3 px-5 pb-3 lg:px-8 lg:pb-4 lg:pt-7">
+        <h2
+          id="auth-modal-heading"
+          className="text-xl font-black uppercase leading-tight tracking-tight text-ink"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-paper p-7 shadow-[0_30px_70px_-20px_rgba(42,31,28,0.45)] sm:p-8"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex gap-6">
-                <button
-                  type="button"
-                  onClick={() => setMode("login")}
-                  id="auth-modal-heading"
-                  className={`pb-2 text-xs font-bold uppercase tracking-[0.16em] transition-colors ${
-                    mode === "login"
-                      ? "border-b-2 border-ink text-ink"
-                      : "border-b-2 border-transparent text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  Iniciar sesión
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("signup")}
-                  className={`pb-2 text-xs font-bold uppercase tracking-[0.16em] transition-colors ${
-                    mode === "signup"
-                      ? "border-b-2 border-ink text-ink"
-                      : "border-b-2 border-transparent text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  Crear cuenta
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Cerrar"
-                className="flex h-8 w-8 shrink-0 items-center justify-center text-ink-muted transition-transform duration-300 ease-out hover:rotate-90 hover:text-ink"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <div className="mt-2 border-b border-sand" />
+          {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+        </h2>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Cerrar"
+          className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-ink-muted transition-transform duration-300 ease-out hover:rotate-90 hover:text-ink"
+        >
+          <CloseIcon />
+        </button>
+      </div>
 
-            <div className="mt-6">
-              {mode === "login" ? <LoginForm /> : <SignupForm />}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      <div className="overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
+        {mode === "login" ? <LoginForm /> : <SignupForm />}
+      </div>
+    </Sheet>
   );
 }
 
@@ -195,7 +157,7 @@ function LoginForm() {
             setView("login");
             setError(null);
           }}
-          className="text-sm font-medium text-ink underline"
+          className="flex h-11 items-center justify-center text-sm font-medium text-ink underline"
         >
           Volver a iniciar sesión
         </button>
@@ -231,7 +193,7 @@ function LoginForm() {
             setError(null);
             setNeedsVerification(false);
           }}
-          className="self-end text-xs font-medium text-ink-muted underline hover:text-velvet"
+          className="-mt-1 flex h-10 items-center self-end text-xs font-medium text-ink-muted underline hover:text-velvet"
         >
           ¿Olvidaste tu contraseña?
         </button>
@@ -260,20 +222,23 @@ function LoginForm() {
       <button type="submit" disabled={isSubmitting} className={buttonClasses("solid")}>
         {isSubmitting ? "Ingresando…" : "Ingresar"}
       </button>
-      <button
-        type="button"
-        onClick={() => setMode("signup")}
-        className={buttonClasses("outline")}
-      >
-        Crear cuenta
-      </button>
+      <p className="text-center text-sm text-ink-muted">
+        ¿No tienes cuenta?{" "}
+        <button
+          type="button"
+          onClick={() => setMode("signup")}
+          className="inline-flex h-11 items-center font-medium text-ink underline"
+        >
+          Crea una
+        </button>
+      </p>
     </form>
   );
 }
 
 function SignupForm() {
   const { signup } = useAuth();
-  const { close } = useAuthModal();
+  const { close, setMode } = useAuthModal();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -382,6 +347,16 @@ function SignupForm() {
       <button type="submit" disabled={isSubmitting} className={buttonClasses("solid")}>
         {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
       </button>
+      <p className="text-center text-sm text-ink-muted">
+        ¿Ya tienes cuenta?{" "}
+        <button
+          type="button"
+          onClick={() => setMode("login")}
+          className="inline-flex h-11 items-center font-medium text-ink underline"
+        >
+          Inicia sesión
+        </button>
+      </p>
     </form>
   );
 }

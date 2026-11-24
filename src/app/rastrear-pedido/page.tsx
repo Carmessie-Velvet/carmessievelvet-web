@@ -8,6 +8,7 @@ import { FormField } from "@/components/ui/FormField";
 import { buttonClasses } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { OrderDetailCard } from "@/components/account/OrderDetailCard";
+import { HelpLinks } from "@/components/layout/HelpLinks";
 import type { Order } from "@/types/order";
 
 export default function RastrearPedidoPage() {
@@ -59,6 +60,10 @@ function RastrearPedidoContent() {
           id="orderNumber"
           label="Número de pedido"
           placeholder="CM-001021"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="next"
           required
           value={orderNumber}
           onChange={(e) => setOrderNumber(e.target.value)}
@@ -67,6 +72,8 @@ function RastrearPedidoContent() {
           id="email"
           label="Correo electrónico"
           type="email"
+          autoComplete="email"
+          enterKeyHint="search"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -87,6 +94,8 @@ function RastrearPedidoContent() {
           <OrderDetailCard order={order} />
         </div>
       )}
+
+      <HelpLinks className="mt-14" />
     </div>
   );
 }

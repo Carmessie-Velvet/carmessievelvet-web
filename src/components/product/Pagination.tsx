@@ -50,18 +50,56 @@ export function Pagination({
   currentPage,
   totalPages,
   searchParams,
+  total,
+  pageSize,
 }: {
   currentPage: number;
   totalPages: number;
   searchParams: Record<string, string | undefined>;
+  /** With `pageSize`, adds the "Mostrando 13–24 de 30" line above the pages. */
+  total?: number;
+  pageSize?: number;
 }) {
   if (totalPages <= 1) return null;
 
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
+  const from = pageSize ? (currentPage - 1) * pageSize + 1 : null;
+  const to = pageSize && total ? Math.min(currentPage * pageSize, total) : null;
 
   return (
-    <nav aria-label="Paginación" className="mt-14 flex items-center justify-center gap-1.5">
+    <div className="mt-14 flex flex-col items-center gap-3">
+      {from && to && total ? (
+        <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">
+          Mostrando {from}–{to} de {total} piezas
+        </p>
+      ) : null}
+      <PageStrip
+        currentPage={currentPage}
+        totalPages={totalPages}
+        searchParams={searchParams}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+      />
+    </div>
+  );
+}
+
+function PageStrip({
+  currentPage,
+  totalPages,
+  searchParams,
+  hasPrev,
+  hasNext,
+}: {
+  currentPage: number;
+  totalPages: number;
+  searchParams: Record<string, string | undefined>;
+  hasPrev: boolean;
+  hasNext: boolean;
+}) {
+  return (
+    <nav aria-label="Paginación" className="flex items-center justify-center gap-1">
       <ArrowLink
         href={hasPrev ? buildHref(searchParams, currentPage - 1) : undefined}
         ariaLabel="Página anterior"
@@ -79,7 +117,7 @@ export function Pagination({
             key={page}
             href={buildHref(searchParams, page)}
             aria-current={page === currentPage ? "page" : undefined}
-            className={`flex h-9 w-9 items-center justify-center text-xs font-medium transition-colors duration-200 ${
+            className={`flex h-11 w-11 items-center justify-center text-sm font-medium transition-colors duration-200 ${
               page === currentPage
                 ? "bg-ink text-cream-soft"
                 : "text-ink-muted hover:text-ink"
@@ -109,7 +147,7 @@ function ArrowLink({
   ariaLabel: string;
   children: React.ReactNode;
 }) {
-  const className = "flex h-9 w-9 items-center justify-center text-ink-muted transition-colors duration-200";
+  const className = "flex h-11 w-11 items-center justify-center text-ink-muted transition-colors duration-200";
   if (!href) {
     return (
       <span aria-disabled="true" className={`${className} opacity-30`}>

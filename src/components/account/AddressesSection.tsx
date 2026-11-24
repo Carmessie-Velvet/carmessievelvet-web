@@ -23,6 +23,14 @@ const EMPTY_FORM: AddressInput = {
   reference: "",
 };
 
+// Small outlined buttons under each address: 44px tall so a thumb can hit
+// them, where they used to be bare 12px text links.
+const ACTION_CLASS =
+  "flex h-11 items-center border border-sand bg-paper px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink transition-colors hover:border-ink disabled:opacity-50";
+
+const SELECT_CLASS =
+  "h-[54px] border border-sand bg-paper px-3 text-base text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]";
+
 export function AddressesSection() {
   const [addresses, setAddresses] = useState<UserAddress[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -102,9 +110,16 @@ export function AddressesSection() {
       )}
 
       {addresses.length > 0 && (
-        <ul className="flex flex-col divide-y divide-sand">
+        <ul className="flex flex-col gap-3">
           {addresses.map((address) => (
-            <li key={address.id} className="py-3">
+            <li
+              key={address.id}
+              className={`border p-4 ${
+                address.isDefault && editingId !== address.id
+                  ? "border-ink/25 bg-cream-soft/60"
+                  : "border-sand"
+              }`}
+            >
               {editingId === address.id ? (
                 <AddressForm
                   initial={address}
@@ -115,51 +130,42 @@ export function AddressesSection() {
                   }}
                 />
               ) : (
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-ink">
-                      {address.fullName}
-                      {address.isDefault && (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-velvet">
-                          Predeterminada
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-0.5 text-xs text-ink-muted">
-                      {address.street} {address.extNumber}
-                      {address.intNumber ? `, Int. ${address.intNumber}` : ""}, {address.suburb},{" "}
-                      {address.city}, {address.state} {address.postalCode}
-                    </p>
+                <>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <p className="text-sm font-semibold text-ink">{address.fullName}</p>
+                    {address.isDefault && (
+                      <span className="bg-velvet px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-cream-soft">
+                        Predeterminada
+                      </span>
+                    )}
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(address.id)}
-                        className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingRemoveId(address.id)}
-                        className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                    {address.street} {address.extNumber}
+                    {address.intNumber ? `, Int. ${address.intNumber}` : ""}, {address.suburb},{" "}
+                    {address.city}, {address.state} {address.postalCode}
+                  </p>
+                  {address.phone && (
+                    <p className="mt-0.5 text-sm text-ink-muted">Tel. {address.phone}</p>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setEditingId(address.id)} className={ACTION_CLASS}>
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => setPendingRemoveId(address.id)} className={ACTION_CLASS}>
+                      Eliminar
+                    </button>
                     {!address.isDefault && (
                       <button
                         type="button"
                         onClick={() => handleSetDefault(address.id)}
                         disabled={settingDefaultId === address.id}
-                        className="text-xs uppercase tracking-[0.1em] text-ink-muted underline-offset-2 hover:text-velvet hover:underline disabled:opacity-50"
+                        className={ACTION_CLASS}
                       >
                         {settingDefaultId === address.id ? "Guardando…" : "Hacer predeterminada"}
                       </button>
                     )}
                   </div>
-                </div>
+                </>
               )}
             </li>
           ))}
@@ -182,9 +188,7 @@ export function AddressesSection() {
           <button
             type="button"
             onClick={() => setEditingId("new")}
-            className={`text-xs font-medium uppercase tracking-[0.1em] text-ink underline-offset-2 hover:text-velvet hover:underline ${
-              addresses.length > 0 ? "mt-3" : ""
-            }`}
+            className={`${buttonClasses("outline")} w-full sm:w-auto ${addresses.length > 0 ? "mt-3" : ""}`}
           >
             + Agregar dirección
           </button>
@@ -319,6 +323,7 @@ function AddressForm({
       <FormField
         id="addr-fullName"
         label="Nombre completo"
+        autoComplete="name"
         required
         value={form.fullName}
         onChange={(e) => update("fullName", e.target.value)}
@@ -327,14 +332,16 @@ function AddressForm({
         id="addr-phone"
         label="Teléfono"
         type="tel"
+        autoComplete="tel"
         required
         value={form.phone}
         onChange={(e) => update("phone", e.target.value)}
       />
-      <div className="grid grid-cols-[1fr_auto] gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
         <FormField
           id="addr-street"
           label="Calle"
+          autoComplete="address-line1"
           required
           value={form.street}
           onChange={(e) => update("street", e.target.value)}
@@ -356,6 +363,7 @@ function AddressForm({
       <FormField
         id="addr-postalCode"
         label="Código postal"
+        autoComplete="postal-code"
         required
         inputMode="numeric"
         pattern="\d{5}"
@@ -381,7 +389,7 @@ function AddressForm({
             required
             value={form.suburb}
             onChange={(e) => update("suburb", e.target.value)}
-            className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+            className={SELECT_CLASS}
           >
             <option value="" disabled>
               Selecciona una colonia
@@ -422,7 +430,7 @@ function AddressForm({
             required
             value={form.stateCode}
             onChange={(e) => update("stateCode", e.target.value)}
-            className="border border-sand bg-paper px-4 py-2.5 text-sm text-ink outline-none transition-all duration-200 focus:border-ink focus:shadow-[0_0_0_3px_rgba(75,21,48,0.08)]"
+            className={SELECT_CLASS}
           >
             <option value="" disabled>
               {mxStates ? "Selecciona un estado" : "Cargando…"}
@@ -444,7 +452,7 @@ function AddressForm({
 
       {error && <p className="text-sm text-velvet">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <button type="submit" disabled={isSaving} className={buttonClasses("solid")}>
           {isSaving ? "Guardando…" : "Guardar dirección"}
         </button>

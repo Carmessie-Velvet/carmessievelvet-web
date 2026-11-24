@@ -7,12 +7,10 @@ import { useAuthModal } from "@/context/auth-modal-context";
 import { useRequireAuth } from "@/lib/use-require-auth";
 import { orderService } from "@/services/order-service";
 import { ApiError } from "@/lib/api-client";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
-import { formatCurrency } from "@/lib/format-currency";
-import { formatOrderDate } from "@/lib/format-order-date";
 import type { Order } from "@/types/order";
 import { buttonClasses } from "@/components/ui/Button";
 import { OrderDetailCard } from "@/components/account/OrderDetailCard";
+import { OrderRow } from "@/components/account/OrderRow";
 
 const PAGE_SIZE = 8;
 
@@ -171,28 +169,17 @@ function PedidosPageContent() {
                 const active = order.id === selectedId;
                 return (
                   <li key={order.id}>
-                    <Link
+                    <OrderRow
+                      order={order}
                       href={`/cuenta/pedidos/${order.id}`}
+                      active={active}
                       onClick={(event) => {
                         if (window.matchMedia("(min-width: 1024px)").matches) {
                           event.preventDefault();
                           selectOrder(order.id);
                         }
                       }}
-                      className={`flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:text-velvet lg:px-5 ${
-                        active ? "lg:bg-cream-soft" : ""
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm text-ink">{order.orderNumber}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.1em] text-ink-muted">
-                          {ORDER_STATUS_LABELS[order.status]} · {formatOrderDate(order.createdAt)}
-                        </p>
-                      </div>
-                      <p className="text-sm font-medium text-ink">
-                        {formatCurrency(order.total)}
-                      </p>
-                    </Link>
+                    />
                   </li>
                 );
               })}
@@ -204,7 +191,7 @@ function PedidosPageContent() {
                   type="button"
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="transition-colors disabled:opacity-30 enabled:hover:text-ink"
+                  className="flex h-11 items-center px-1 transition-colors disabled:opacity-30 enabled:hover:text-ink"
                 >
                   ← Anterior
                 </button>
@@ -215,7 +202,7 @@ function PedidosPageContent() {
                   type="button"
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= totalPages}
-                  className="transition-colors disabled:opacity-30 enabled:hover:text-ink"
+                  className="flex h-11 items-center px-1 transition-colors disabled:opacity-30 enabled:hover:text-ink"
                 >
                   Siguiente →
                 </button>

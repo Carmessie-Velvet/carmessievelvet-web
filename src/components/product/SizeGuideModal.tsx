@@ -1,7 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
+import { Sheet } from "@/components/ui/Sheet";
 
 // All measurements in cm, straight from the client's own size charts — one
 // modal with all three garment types (not just the product's own category)
@@ -35,86 +34,67 @@ export function SizeGuideModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  useLockBodyScroll(isOpen);
-  useEscapeKey(onClose, isOpen);
-
+  // Same panel as the cart and quick add: a sheet that rises from the bottom
+  // on a phone (draggable to dismiss), a centered dialog on desktop. It opens
+  // over the quick-add dialog too, so it is mounted after it and sits above.
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/60 p-4 backdrop-blur-[2px]"
-          onClick={onClose}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="size-guide-heading"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto bg-paper p-6 shadow-[0_30px_70px_-20px_rgba(42,31,28,0.45)] sm:p-8"
+    <Sheet isOpen={isOpen} onClose={onClose} desktop="center" labelledBy="size-guide-heading">
+      <div className="flex shrink-0 items-start justify-between gap-4 px-5 pb-2 lg:px-8 lg:pt-7">
+        <div>
+          <h2
+            id="size-guide-heading"
+            className="text-xl font-black uppercase leading-tight tracking-tight text-ink"
           >
-            <div className="flex items-start justify-between gap-4">
-              <h2
-                id="size-guide-heading"
-                className="text-base font-black uppercase tracking-tight text-ink"
-              >
-                Guía de tallas
-              </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Cerrar"
-                className="shrink-0 text-ink-muted transition-colors hover:text-ink"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-ink-muted">Todas las medidas en centímetros.</p>
+            Guía de tallas
+          </h2>
+          <p className="mt-1 text-xs text-ink-muted">Todas las medidas en centímetros.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="-mr-2 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center text-ink-muted transition-colors hover:text-ink"
+        >
+          <CloseIcon />
+        </button>
+      </div>
 
-            <SizeTable
-              title="Corset y bustier"
-              columns={["Talla", "Pecho"]}
-              note="Todos son ajustables por la espalda."
-            >
-              {CORSET_ROWS.map((row) => (
-                <tr key={row.size}>
-                  <td className="py-2 font-medium text-ink">{row.size}</td>
-                  <td className="py-2">{row.pecho}</td>
-                </tr>
-              ))}
-            </SizeTable>
+      <div className="overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
+        <SizeTable
+          title="Corset y bustier"
+          columns={["Talla", "Pecho"]}
+          note="Todos son ajustables por la espalda."
+        >
+          {CORSET_ROWS.map((row) => (
+            <tr key={row.size}>
+              <td className="py-2.5 font-medium text-ink">{row.size}</td>
+              <td className="py-2.5">{row.pecho}</td>
+            </tr>
+          ))}
+        </SizeTable>
 
-            <SizeTable title="Faldas" columns={["Talla", "Cintura", "Cadera"]}>
-              {FALDA_ROWS.map((row) => (
-                <tr key={row.size}>
-                  <td className="py-2 font-medium text-ink">{row.size}</td>
-                  <td className="py-2">{row.cintura} cm</td>
-                  <td className="py-2">{row.cadera} cm</td>
-                </tr>
-              ))}
-            </SizeTable>
+        <SizeTable title="Faldas" columns={["Talla", "Cintura", "Cadera"]}>
+          {FALDA_ROWS.map((row) => (
+            <tr key={row.size}>
+              <td className="py-2.5 font-medium text-ink">{row.size}</td>
+              <td className="py-2.5">{row.cintura} cm</td>
+              <td className="py-2.5">{row.cadera} cm</td>
+            </tr>
+          ))}
+        </SizeTable>
 
-            <SizeTable title="Pantalones" columns={["Talla", "Cintura", "Cadera", "Largo"]}>
-              {PANTALON_ROWS.map((row) => (
-                <tr key={row.size}>
-                  <td className="py-2 font-medium text-ink">{row.size}</td>
-                  <td className="py-2">{row.cintura} cm</td>
-                  <td className="py-2">{row.cadera} cm</td>
-                  <td className="py-2">{row.largo} cm</td>
-                </tr>
-              ))}
-            </SizeTable>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        <SizeTable title="Pantalones" columns={["Talla", "Cintura", "Cadera", "Largo"]}>
+          {PANTALON_ROWS.map((row) => (
+            <tr key={row.size}>
+              <td className="py-2.5 font-medium text-ink">{row.size}</td>
+              <td className="py-2.5">{row.cintura} cm</td>
+              <td className="py-2.5">{row.cadera} cm</td>
+              <td className="py-2.5">{row.largo} cm</td>
+            </tr>
+          ))}
+        </SizeTable>
+      </div>
+    </Sheet>
   );
 }
 

@@ -132,6 +132,8 @@ export default async function TiendaPage({
       <Pagination
         currentPage={productPage.page}
         totalPages={productPage.totalPages}
+        total={productPage.total}
+        pageSize={PAGE_SIZE}
         searchParams={{ categoria, q, talla, orden }}
       />
     </div>

@@ -130,10 +130,12 @@ export function TopBar() {
           key={message.key}
           aria-hidden={i !== active}
           inert={i !== active}
-          className={`absolute inset-0 flex items-center justify-center gap-2 px-3 text-center text-[10px] font-medium uppercase tracking-[0.16em] transition-all duration-500 ease-[var(--ease-soft)] sm:text-[11px] sm:tracking-[0.2em] ${
+          // The one leaving fades out quickly and the one arriving waits for it,
+          // so the two lines never sit on top of each other mid-change.
+          className={`absolute inset-0 flex items-center justify-center gap-2 px-3 text-center text-[10px] font-medium uppercase tracking-[0.16em] transition-all ease-[var(--ease-soft)] sm:text-[11px] sm:tracking-[0.2em] ${
             i === active
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-2 opacity-0"
+              ? "translate-y-0 opacity-100 delay-[220ms] duration-500"
+              : "pointer-events-none translate-y-2 opacity-0 delay-0 duration-200"
           }`}
         >
           {message.node}

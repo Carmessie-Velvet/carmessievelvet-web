@@ -1,12 +1,13 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { useLockBodyScroll, useEscapeKey } from "@/lib/use-lock-body-scroll";
 import { buttonClasses } from "@/components/ui/Button";
+import { Sheet } from "@/components/ui/Sheet";
 
 // The brand-styled stand-in for window.confirm() — used anywhere a
 // destructive action (remove a card, delete the account) needs a real
-// confirmation step instead of the native browser dialog.
+// confirmation step instead of the native browser dialog. A sheet from the
+// bottom on a phone (buttons stacked, thumb-sized) and a small centered
+// dialog on desktop, like every other panel on the site.
 export function ConfirmDialog({
   isOpen,
   title,
@@ -28,62 +29,44 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  useLockBodyScroll(isOpen);
-  useEscapeKey(onCancel, isOpen);
-
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/60 p-4 backdrop-blur-[2px]"
-          onClick={onCancel}
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="confirm-dialog-heading"
+    <Sheet
+      isOpen={isOpen}
+      onClose={onCancel}
+      desktop="center"
+      labelledBy="confirm-dialog-heading"
+      className="lg:max-w-sm!"
+    >
+      <div className="px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-1 lg:px-6 lg:pb-6 lg:pt-6">
+        <h2
+          id="confirm-dialog-heading"
+          className="text-lg font-black uppercase leading-tight tracking-tight text-ink"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-paper p-6 shadow-[0_30px_70px_-20px_rgba(42,31,28,0.45)]"
+          {title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-ink-muted">{description}</p>
+        <div className="mt-6 flex flex-col gap-3 lg:flex-row-reverse">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isConfirming}
+            className={`h-[52px] px-6 text-xs font-medium uppercase tracking-[0.18em] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 lg:flex-1 ${
+              danger
+                ? "bg-velvet text-cream-soft hover:bg-velvet-light"
+                : "bg-ink text-cream-soft hover:bg-velvet"
+            }`}
           >
-            <h2
-              id="confirm-dialog-heading"
-              className="text-base font-black uppercase tracking-tight text-ink"
-            >
-              {title}
-            </h2>
-            <p className="mt-2 text-sm text-ink-muted">{description}</p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={onCancel}
-                className={`${buttonClasses("outline")} flex-1`}
-              >
-                {cancelLabel}
-              </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={isConfirming}
-                className={`flex-1 px-6 py-3 text-xs font-medium uppercase tracking-[0.18em] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
-                  danger
-                    ? "bg-velvet text-cream-soft hover:bg-velvet-light"
-                    : "bg-ink text-cream-soft hover:bg-velvet"
-                }`}
-              >
-                {isConfirming ? "Espera…" : confirmLabel}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            {isConfirming ? "Espera…" : confirmLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className={buttonClasses("outline", "h-[52px] lg:flex-1")}
+          >
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
+    </Sheet>
   );
 }
